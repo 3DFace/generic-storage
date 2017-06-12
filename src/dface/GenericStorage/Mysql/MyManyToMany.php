@@ -192,10 +192,10 @@ class MyManyToMany implements GenericManyToMany {
 		$this->dbi->query('DROP TABLE IF EXISTS {i}', $this->tableName);
 		$tmp = $this->temporary ? 'TEMPORARY' : '';
 		$this->dbi->query("CREATE $tmp TABLE {i:1} (
-			seq_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+			`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			{i:2} BINARY(16) NOT NULL,
 			{i:3} BINARY(16) NOT NULL,
-			store_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			UNIQUE({i:2}, {i:3}),
 			UNIQUE({i:3}, {i:2})
 		) ENGINE=InnoDB", $this->tableName, $this->leftColumnName, $this->rightColumnName);

@@ -43,7 +43,7 @@ class MySet implements GenericSet {
 		try{
 			if($q1 === null){
 				/** @noinspection SqlResolve */
-				$q1 = $this->dbi->prepare('SELECT 1 FROM {i} WHERE `id`=UNHEX({s})');
+				$q1 = $this->dbi->prepare('SELECT 1 FROM {i} WHERE `$id`=UNHEX({s})');
 			}
 			return $this->dbi->select($q1, $this->tableName, (string)$id)->getValue() !== null;
 		}catch(MysqlException|FormatterException|ParserException $e){
@@ -61,7 +61,7 @@ class MySet implements GenericSet {
 		try{
 			if($q1 === null){
 				/** @noinspection SqlResolve */
-				$q1 = $this->dbi->prepare('INSERT IGNORE INTO {i} (`id`) VALUES (UNHEX({s}))');
+				$q1 = $this->dbi->prepare('INSERT IGNORE INTO {i} (`$id`) VALUES (UNHEX({s}))');
 			}
 			$this->dbi->update($q1, $this->tableName, (string)$id);
 		}catch(MysqlException|FormatterException|ParserException $e){
@@ -79,7 +79,7 @@ class MySet implements GenericSet {
 		try{
 			if($q1 === null){
 				/** @noinspection SqlResolve */
-				$q1 = $this->dbi->prepare('DELETE FROM {i} WHERE `id`=UNHEX({s})');
+				$q1 = $this->dbi->prepare('DELETE FROM {i} WHERE `$id`=UNHEX({s})');
 			}
 			$this->dbi->update($q1, $this->tableName, (string)$id);
 		}catch(MysqlException|FormatterException|ParserException $e){
@@ -97,13 +97,13 @@ class MySet implements GenericSet {
 		try{
 			if($q1 === null){
 				/** @noinspection SqlResolve */
-				$q1 = $this->dbi->prepare('SELECT HEX(`id`) `id` FROM {i}');
+				$q1 = $this->dbi->prepare('SELECT HEX(`$id`) `$id` FROM {i}');
 			}
 			$it = $this->dbi->select($q1, $this->tableName);
 			$className = $this->className;
 			foreach($it as $rec){
 				/** @noinspection PhpUndefinedMethodInspection */
-				$x = $className::deserialize($rec['id']);
+				$x = $className::deserialize($rec['$id']);
 				yield $x;
 			}
 		}catch(MysqlException|FormatterException|ParserException $e){
@@ -115,9 +115,9 @@ class MySet implements GenericSet {
 		$this->dbi->query('DROP TABLE IF EXISTS {i}', $this->tableName);
 		$tmp = $this->temporary ? 'TEMPORARY' : '';
 		$this->dbi->query("CREATE $tmp TABLE {i} (
-			seq_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-			`id` BINARY(16) NOT NULL UNIQUE,
-			store_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+			`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+			`\$id` BINARY(16) NOT NULL UNIQUE,
+			`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 		) ENGINE=InnoDB", $this->tableName);
 	}
 
