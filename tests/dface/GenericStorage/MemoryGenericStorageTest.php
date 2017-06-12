@@ -9,7 +9,7 @@ use dface\GenericStorage\Generic\GenericStorage;
 class MemoryGenericStorageTest extends GenericStorageTest {
 
 	protected function createStorage() : GenericStorage{
-		return new MemoryStorage(TestEntity::class, ['user_email']);
+		return new MemoryStorage(TestEntity::class);
 	}
 
 }
