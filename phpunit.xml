@@ -1,0 +1,12 @@
+<phpunit bootstrap="bootstrap.php">
+    <testsuites>
+        <testsuite name="Unit Tests">
+            <directory suffix="Test.php" phpVersion="7.1.0" phpVersionOperator=">=">tests/</directory>
+        </testsuite>
+    </testsuites>
+    <filter>
+        <whitelist>
+            <directory>tests/dface/GenericStorage</directory>
+        </whitelist>
+    </filter>
+</phpunit>
