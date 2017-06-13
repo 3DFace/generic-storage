@@ -23,6 +23,10 @@ class MyStorage implements GenericStorage {
 	private $dbi;
 	/** @var string */
 	private $tableName;
+	/** @var string */
+	private $idColumnType;
+	/** @var string */
+	private $idPropertyName;
 	/** @var string[] */
 	private $add_columns;
 	/** @var string[] */
@@ -41,8 +45,10 @@ class MyStorage implements GenericStorage {
 	public function __construct(
 		string $className,
 		MysqliConnection $dbi,
-		$dedicatedConnectionFactory,
 		string $tableName,
+		$dedicatedConnectionFactory,
+		string $idColumnType = 'CHAR(32) CHARACTER SET ASCII',
+		string $idPropertyName = null,
 		array $add_columns = [],
 		array $add_indexes = [],
 		$has_unique_secondary = false,
@@ -51,12 +57,15 @@ class MyStorage implements GenericStorage {
 		$this->className = $className;
 		$this->dbi = $dbi;
 		$this->tableName = $tableName;
+		$this->idColumnType = $idColumnType;
+		$this->idPropertyName = $idPropertyName;
 		$this->add_columns = $add_columns;
 		$this->add_indexes = $add_indexes;
 		$this->dedicatedConnectionFactory = $temporary ? null : $dedicatedConnectionFactory;
 		$this->temporary = $temporary;
 		$this->has_unique_secondary = $has_unique_secondary;
 		$this->criteriaBuilder = new SqlCriteriaBuilder();
+		/** @noinspection SqlResolve */
 		$this->selectAllFromTable = $this->dbi->build('SELECT * FROM {i}', $this->tableName);
 	}
 
@@ -71,13 +80,13 @@ class MyStorage implements GenericStorage {
 		try{
 			if($q1 === null){
 				/** @noinspection SqlResolve */
-				$q1 = $this->dbi->prepare('SELECT `$data` FROM {i} WHERE `$id`=UNHEX({s})');
+				$q1 = $this->dbi->prepare('SELECT * FROM {i} WHERE `$id`={s}');
 			}
-			$data = $this->dbi->select($q1, $this->tableName, (string)$id)->getValue();
-			if($data === null){
+			$rec = $this->dbi->select($q1, $this->tableName, (string)$id)->getRecord();
+			if($rec === null){
 				return null;
 			}
-			return call_user_func([$this->className, 'deserialize'], json_decode($data, true));
+			return $this->deserialize($rec);
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
 		}
@@ -93,22 +102,24 @@ class MyStorage implements GenericStorage {
 		static $q1;
 		try{
 			if($q1 === null){
-				$q1 = $this->dbi->prepare('UNHEX({s})');
+				$q1 = $this->dbi->prepare(' WHERE `$id` IN ({s})');
 
 			}
 			$batch_size = 500;
 			$sub_list = [];
 			foreach($ids as $id){
-				$sub_list[] = '0x'.(string)$id;
+				$sub_list[] = $id;
 				if(count($sub_list) === $batch_size){
-					$arr_str = implode(",\n", $sub_list);
-					yield from $this->iterateOverDecoded(new CompositeNode([$this->selectAllFromTable, new PlainNode(0, " WHERE `\$id` IN ($arr_str)")]));
+					$where = $this->dbi->build($q1, $sub_list, 1);
+					$node = new CompositeNode([$this->selectAllFromTable, $where]);
+					yield from $this->iterateOverDecoded($node);
 					$sub_list = [];
 				}
 			}
 			if($sub_list){
-				$arr_str = implode(",\n", $sub_list);
-				yield from $this->iterateOverDecoded(new CompositeNode([$this->selectAllFromTable, new PlainNode(0, " WHERE `\$id` IN ($arr_str)")]));
+				$where = $this->dbi->build($q1, $sub_list, 1);
+				$node = new CompositeNode([$this->selectAllFromTable, $where]);
+				yield from $this->iterateOverDecoded($node);
 			}
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
@@ -125,14 +136,11 @@ class MyStorage implements GenericStorage {
 			/** @noinspection ExceptionsAnnotatingAndHandlingInspection */
 			throw new \InvalidArgumentException("Stored item must be instance of $this->className");
 		}
-		$arr = $item->jsonSerialize();
 		try{
+			$arr = $item->jsonSerialize();
 			$add_column_set_str = $this->createUpdateColumnsFragment($arr);
 			$add_column_set_node = new PlainNode(0, $add_column_set_str ? (', '.$add_column_set_str) : '');
-			$data = json_encode($arr, JSON_UNESCAPED_UNICODE);
-			if(($len = strlen($data)) > 65535){
-				throw new MyStorageError("Can't write $len bytes as $this->className#$id data at ".self::class);
-			}
+			$data = $this->serialize($id, $arr);
 			if($this->has_unique_secondary){
 				try{
 					$this->insert($id, $data, $add_column_set_node);
@@ -148,6 +156,24 @@ class MyStorage implements GenericStorage {
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
 		}
+	}
+
+	private function serialize($id, array $arr) : ?string {
+		if($this->idPropertyName !== null){
+			$propertyValue = $arr[$this->idPropertyName];
+			if((string)$propertyValue !== (string)$id){
+				throw new MyStorageError("Id property $this->idPropertyName '$propertyValue' does not match passed id '$id'");
+			}
+			unset($arr[$this->idPropertyName]);
+		}
+		if(!$arr){
+			return null;
+		}
+		$data = json_encode($arr, JSON_UNESCAPED_UNICODE);
+		if(($len = strlen($data)) > 65535){
+			throw new MyStorageError("Can't write $len bytes as $this->className#$id data at ".self::class);
+		}
+		return $data;
 	}
 
 	/**
@@ -173,7 +199,7 @@ class MyStorage implements GenericStorage {
 		static $q;
 		if($q === null){
 			/** @noinspection SqlResolve */
-			$q = $this->dbi->prepare('INSERT INTO {i:1} SET `$id`=UNHEX({s:2}), `$data`={s:3} ');
+			$q = $this->dbi->prepare('INSERT INTO {i:1} SET `$id`={s:2}, `$data`={s:3} ');
 		}
 		$node = new CompositeNode([$q, $add_column_set_node]);
 		$this->dbi->update($node, $this->tableName, $id, $data);
@@ -191,7 +217,7 @@ class MyStorage implements GenericStorage {
 		if($q1 === null){
 			/** @noinspection SqlResolve */
 			$q1 = $this->dbi->prepare('UPDATE {i:1} SET `$data`={s:3} ');
-			$q2 = $this->dbi->prepare(' WHERE `$id`=UNHEX({s:2})');
+			$q2 = $this->dbi->prepare(' WHERE `$id`={s:2}');
 		}
 		$node = new CompositeNode([$q1, $add_column_set_node, $q2]);
 		$this->dbi->update($node, $this->tableName, $id, $data);
@@ -206,7 +232,7 @@ class MyStorage implements GenericStorage {
 		static $q1;
 		if($q1 === null){
 			/** @noinspection SqlResolve */
-			$q1 = $this->dbi->prepare('DELETE FROM {i:1} WHERE `$id`=UNHEX({s:2})');
+			$q1 = $this->dbi->prepare('DELETE FROM {i:1} WHERE `$id`={s:2}');
 		}
 		$this->dbi->update($q1, $this->tableName, $id);
 	}
@@ -218,11 +244,11 @@ class MyStorage implements GenericStorage {
 	 *
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
-	private function insertOnDupUpdate(string $id, string $data, Node $add_column_set_str) : void {
+	private function insertOnDupUpdate(string $id, ?string $data, Node $add_column_set_str) : void {
 		static $q1, $q2;
 		if($q1 === null){
 			/** @noinspection SqlResolve */
-			$q1 = $this->dbi->prepare('INSERT INTO {i:1} SET `$id`=UNHEX({s:2}), `$data`={s:3} ');
+			$q1 = $this->dbi->prepare('INSERT INTO {i:1} SET `$id`={s:2}, `$data`={s:3} ');
 			$q2 = $this->dbi->prepare(' ON DUPLICATE KEY UPDATE `$data`={s:3} ');
 		}
 		$node = new CompositeNode([$q1, $add_column_set_str, $q2, $add_column_set_str]);
@@ -235,7 +261,7 @@ class MyStorage implements GenericStorage {
 	 *
 	 * @throws FormatterException|ParserException
 	 */
-	private function createUpdateColumnsFragment($arr) : string {
+	private function createUpdateColumnsFragment(&$arr) : string {
 		static $q1;
 		if($q1 === null){
 			$q1 = $this->dbi->prepare('{i}={s}');
@@ -243,27 +269,40 @@ class MyStorage implements GenericStorage {
 		$add_column_set_str = [];
 		foreach($this->add_columns as $i => $x){
 			$default = $x['default'] ?? null;
-			$v = $this->getIndexValue($arr, $i, $default);
+			$v = $this->extractIndexValue($arr, $i, $default);
 			$add_column_set_str[] = (string)$this->dbi->build($q1, $i, $v);
 		}
 		return implode(', ', $add_column_set_str);
 	}
 
 	/**
-	 * @param $x
+	 * @param &$x
 	 * @param $index_name
 	 * @param $default
 	 * @return mixed
 	 */
-	private function getIndexValue($x, $index_name, $default) {
+	private function extractIndexValue(&$x, $index_name, $default) {
 		$path = explode('/', $index_name);
+		$last = array_pop($path);
 		foreach($path as $p){
 			if(!isset($x[$p])){
-				return $default;
+				$x = [];
+				break;
 			}
 			$x = $x[$p];
 		}
-		return $x;
+		$val = $x[$last] ?? $default;
+		unset($x[$last]);
+		return $val;
+	}
+
+	private function pushIndexValue(&$x, $index_name, $value) : void {
+		$path = explode('/', $index_name);
+		$last = array_pop($path);
+		foreach($path as $p){
+			$x = $x[$p] ?? [];
+		}
+		$x[$last] = $value;
 	}
 
 	/**
@@ -301,7 +340,9 @@ class MyStorage implements GenericStorage {
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
 	private function makeWhere(Criteria $criteria) : PlainNode {
-		[$sql, $args] = $this->criteriaBuilder->build($criteria);
+		[$sql, $args] = $this->criteriaBuilder->build($criteria, function($property){
+			return $property === $this->idPropertyName ? '$id' : $property;
+		});
 		return $this->dbi->build($sql, ...$args);
 	}
 
@@ -326,9 +367,26 @@ class MyStorage implements GenericStorage {
 	 */
 	private function iterateOverDecoded(Node $q) : ?\Generator {
 		foreach($this->iterateOver($q) as $rec){
-			$arr = json_decode($rec['$data'], true);
-			yield call_user_func([$this->className, 'deserialize'], $arr);
+			$obj = $this->deserialize($rec);
+			yield $obj;
 		}
+	}
+
+	private function deserialize(array $rec){
+		$arr = $this->restoreArray($rec);
+		return call_user_func([$this->className, 'deserialize'], $arr);
+	}
+
+	private function restoreArray($rec) : array {
+		$data = $rec['$data'];
+		$arr = $data !== null ? json_decode($data, true) : [];
+		if($this->idPropertyName !== null){
+			$arr[$this->idPropertyName] = $rec['$id'];
+		}
+		foreach($this->add_columns as $i => $x){
+			$this->pushIndexValue($arr, $i, $rec[$i]);
+		}
+		return $arr;
 	}
 
 	/**
@@ -378,8 +436,8 @@ class MyStorage implements GenericStorage {
 		$tmp = $this->temporary ? 'TEMPORARY' : '';
 		$this->dbi->query("CREATE $tmp TABLE {i} (
 			`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-			`\$id` BINARY(16) NOT NULL UNIQUE,
-			`\$data` TEXT NOT NULL,
+			`\$id` $this->idColumnType NOT NULL UNIQUE,
+			`\$data` TEXT,
 			`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			INDEX(`\$store_time`) 
 			$add_columns

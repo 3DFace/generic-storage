@@ -3,31 +3,24 @@
 
 namespace dface\GenericStorage;
 
-use dface\GenericStorage\Mysql\MyStorage;
 use dface\GenericStorage\Generic\GenericStorage;
+use dface\GenericStorage\Mysql\MyStorageBuilder;
 
 class MyGenericStorageTest extends GenericStorageTest {
 
-	protected function createStorage() : GenericStorage{
+	protected function createStorage() : GenericStorage {
 		$dbi = DbiFactory::getConnection();
 		$dbiFac = DbiFactory::getConnectionFactory();
-		$s = new MyStorage(
-			TestEntity::class,
-			$dbi,
-			$dbiFac,
-			'test_gen_storage',
-			[
+		$s = (new MyStorageBuilder(TestEntity::class, $dbi, 'test_gen_storage'))
+			->setDedicatedConnectionFactory($dbiFac)
+			->setIdPropertyName('id')
+			->addColumns([
 				'email' => 'VARCHAR(128)',
-				'id' => [
-					'type' => 'CHAR(32) CHARACTER SET ASCII',
-				],
-			],
-			[
+			])
+			->addIndexes([
 				'INDEX email(email)',
-				'INDEX id(id)'
-			],
-			false,
-			false);
+			])
+			->build();
 		$s->reset();
 		return $s;
 	}
