@@ -15,8 +15,6 @@ class MyStorageBuilder {
 	private $tableName;
 
 	/** @var string */
-	private $idColumnType = 'CHAR(32) CHARACTER SET ASCII';
-	/** @var string */
 	private $idPropertyName;
 	/** @var string[] */
 	private $add_columns = [];
@@ -39,11 +37,6 @@ class MyStorageBuilder {
 		$this->className = $className;
 		$this->dbi = $dbi;
 		$this->tableName = $tableName;
-	}
-
-	public function setIdColumnType($idColumnType) : MyStorageBuilder {
-		$this->idColumnType = $idColumnType;
-		return $this;
 	}
 
 	public function setIdPropertyName($idPropertyName) : MyStorageBuilder {
@@ -82,7 +75,6 @@ class MyStorageBuilder {
 			$this->dbi,
 			$this->tableName,
 			$this->dedicatedConnectionFactory,
-			$this->idColumnType,
 			$this->idPropertyName,
 			$this->add_columns,
 			$this->add_indexes,

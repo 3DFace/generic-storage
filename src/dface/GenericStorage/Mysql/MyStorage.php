@@ -24,8 +24,6 @@ class MyStorage implements GenericStorage {
 	/** @var string */
 	private $tableName;
 	/** @var string */
-	private $idColumnType;
-	/** @var string */
 	private $idPropertyName;
 	/** @var string[] */
 	private $add_columns;
@@ -47,7 +45,6 @@ class MyStorage implements GenericStorage {
 		MysqliConnection $dbi,
 		string $tableName,
 		$dedicatedConnectionFactory,
-		string $idColumnType = 'CHAR(32) CHARACTER SET ASCII',
 		string $idPropertyName = null,
 		array $add_columns = [],
 		array $add_indexes = [],
@@ -57,7 +54,6 @@ class MyStorage implements GenericStorage {
 		$this->className = $className;
 		$this->dbi = $dbi;
 		$this->tableName = $tableName;
-		$this->idColumnType = $idColumnType;
 		$this->idPropertyName = $idPropertyName;
 		$this->add_columns = $add_columns;
 		$this->add_indexes = $add_indexes;
@@ -66,7 +62,7 @@ class MyStorage implements GenericStorage {
 		$this->has_unique_secondary = $has_unique_secondary;
 		$this->criteriaBuilder = new SqlCriteriaBuilder();
 		/** @noinspection SqlResolve */
-		$this->selectAllFromTable = $this->dbi->build('SELECT * FROM {i}', $this->tableName);
+		$this->selectAllFromTable = $this->dbi->build('SELECT $data FROM {i}', $this->tableName);
 	}
 
 	/**
@@ -80,7 +76,7 @@ class MyStorage implements GenericStorage {
 		try{
 			if($q1 === null){
 				/** @noinspection SqlResolve */
-				$q1 = $this->dbi->prepare('SELECT * FROM {i} WHERE `$id`={s}');
+				$q1 = $this->dbi->prepare('SELECT $data FROM {i} WHERE `$id`=UNHEX({s})');
 			}
 			$rec = $this->dbi->select($q1, $this->tableName, (string)$id)->getRecord();
 			if($rec === null){
@@ -102,22 +98,21 @@ class MyStorage implements GenericStorage {
 		static $q1;
 		try{
 			if($q1 === null){
-				$q1 = $this->dbi->prepare(' WHERE `$id` IN ({s})');
-
+				$q1 = $this->dbi->prepare('UNHEX({s})');
 			}
 			$batch_size = 500;
 			$sub_list = [];
 			foreach($ids as $id){
-				$sub_list[] = $id;
+				$sub_list[] = $this->dbi->build($q1, $id);
 				if(count($sub_list) === $batch_size){
-					$where = $this->dbi->build($q1, $sub_list, 1);
+					$where = new PlainNode(0, ' WHERE `$id` IN ('.implode(',', $sub_list).')');
 					$node = new CompositeNode([$this->selectAllFromTable, $where]);
 					yield from $this->iterateOverDecoded($node);
 					$sub_list = [];
 				}
 			}
 			if($sub_list){
-				$where = $this->dbi->build($q1, $sub_list, 1);
+				$where = new PlainNode(0, ' WHERE `$id` IN ('.implode(',', $sub_list).')');
 				$node = new CompositeNode([$this->selectAllFromTable, $where]);
 				yield from $this->iterateOverDecoded($node);
 			}
@@ -159,13 +154,6 @@ class MyStorage implements GenericStorage {
 	}
 
 	private function serialize($id, array $arr) : ?string {
-		if($this->idPropertyName !== null){
-			$propertyValue = $arr[$this->idPropertyName];
-			if((string)$propertyValue !== (string)$id){
-				throw new MyStorageError("Id property $this->idPropertyName '$propertyValue' does not match passed id '$id'");
-			}
-			unset($arr[$this->idPropertyName]);
-		}
 		if(!$arr){
 			return null;
 		}
@@ -217,7 +205,7 @@ class MyStorage implements GenericStorage {
 		if($q1 === null){
 			/** @noinspection SqlResolve */
 			$q1 = $this->dbi->prepare('UPDATE {i:1} SET `$data`={s:3} ');
-			$q2 = $this->dbi->prepare(' WHERE `$id`={s:2}');
+			$q2 = $this->dbi->prepare(' WHERE `$id`=UNHEX({s:2})');
 		}
 		$node = new CompositeNode([$q1, $add_column_set_node, $q2]);
 		$this->dbi->update($node, $this->tableName, $id, $data);
@@ -232,7 +220,7 @@ class MyStorage implements GenericStorage {
 		static $q1;
 		if($q1 === null){
 			/** @noinspection SqlResolve */
-			$q1 = $this->dbi->prepare('DELETE FROM {i:1} WHERE `$id`={s:2}');
+			$q1 = $this->dbi->prepare('DELETE FROM {i:1} WHERE `$id`=UNHEX({s:2})');
 		}
 		$this->dbi->update($q1, $this->tableName, $id);
 	}
@@ -248,7 +236,7 @@ class MyStorage implements GenericStorage {
 		static $q1, $q2;
 		if($q1 === null){
 			/** @noinspection SqlResolve */
-			$q1 = $this->dbi->prepare('INSERT INTO {i:1} SET `$id`={s:2}, `$data`={s:3} ');
+			$q1 = $this->dbi->prepare('INSERT INTO {i:1} SET `$id`=UNHEX({s:2}), `$data`={s:3} ');
 			$q2 = $this->dbi->prepare(' ON DUPLICATE KEY UPDATE `$data`={s:3} ');
 		}
 		$node = new CompositeNode([$q1, $add_column_set_str, $q2, $add_column_set_str]);
@@ -261,7 +249,7 @@ class MyStorage implements GenericStorage {
 	 *
 	 * @throws FormatterException|ParserException
 	 */
-	private function createUpdateColumnsFragment(&$arr) : string {
+	private function createUpdateColumnsFragment($arr) : string {
 		static $q1;
 		if($q1 === null){
 			$q1 = $this->dbi->prepare('{i}={s}');
@@ -276,37 +264,21 @@ class MyStorage implements GenericStorage {
 	}
 
 	/**
-	 * @param &$arr
+	 * @param $arr
 	 * @param $index_name
 	 * @param $default
 	 * @return mixed
 	 */
-	private function extractIndexValue(&$arr, $index_name, $default) {
+	private function extractIndexValue(array $arr, string $index_name, $default) {
 		$path = explode('/', $index_name);
-		$last = array_pop($path);
-		$x = &$arr;
+		$x = $arr;
 		foreach($path as $p){
 			if(!isset($x[$p])){
 				return $default;
 			}
-			$x = &$x[$p];
+			$x = $x[$p];
 		}
-		$val = $x[$last];
-		unset($x[$last]);
-		return $val;
-	}
-
-	private function pushIndexValue(&$arr, $index_name, $value) : void {
-		$path = explode('/', $index_name);
-		$last = array_pop($path);
-		$x = &$arr;
-		foreach($path as $p){
-			if(!isset($x[$p])){
-				$x[$p] = [];
-			}
-			$x = &$x[$p];
-		}
-		$x[$last] = $value;
+		return $x;
 	}
 
 	/**
@@ -345,7 +317,7 @@ class MyStorage implements GenericStorage {
 	 */
 	private function makeWhere(Criteria $criteria) : PlainNode {
 		[$sql, $args] = $this->criteriaBuilder->build($criteria, function($property){
-			return $property === $this->idPropertyName ? '$id' : $property;
+			return $property === $this->idPropertyName ? ['HEX({i})', ['$id']] : ['{i}', [$property]];
 		});
 		return $this->dbi->build($sql, ...$args);
 	}
@@ -377,20 +349,8 @@ class MyStorage implements GenericStorage {
 	}
 
 	private function deserialize(array $rec){
-		$arr = $this->restoreArray($rec);
+		$arr = json_decode($rec['$data'], true);
 		return call_user_func([$this->className, 'deserialize'], $arr);
-	}
-
-	private function restoreArray($rec) : array {
-		$data = $rec['$data'];
-		$arr = $data !== null ? json_decode($data, true) : [];
-		if($this->idPropertyName !== null){
-			$arr[$this->idPropertyName] = $rec['$id'];
-		}
-		foreach($this->add_columns as $i => $x){
-			$this->pushIndexValue($arr, $i, $rec[$i]);
-		}
-		return $arr;
 	}
 
 	/**
@@ -440,7 +400,7 @@ class MyStorage implements GenericStorage {
 		$tmp = $this->temporary ? 'TEMPORARY' : '';
 		$this->dbi->query("CREATE $tmp TABLE {i} (
 			`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-			`\$id` $this->idColumnType NOT NULL UNIQUE,
+			`\$id` BINARY(16) NOT NULL UNIQUE,
 			`\$data` TEXT,
 			`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			INDEX(`\$store_time`) 
