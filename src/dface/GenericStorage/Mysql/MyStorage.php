@@ -276,31 +276,35 @@ class MyStorage implements GenericStorage {
 	}
 
 	/**
-	 * @param &$x
+	 * @param &$arr
 	 * @param $index_name
 	 * @param $default
 	 * @return mixed
 	 */
-	private function extractIndexValue(&$x, $index_name, $default) {
+	private function extractIndexValue(&$arr, $index_name, $default) {
 		$path = explode('/', $index_name);
 		$last = array_pop($path);
+		$x = &$arr;
 		foreach($path as $p){
 			if(!isset($x[$p])){
-				$x = [];
-				break;
+				return $default;
 			}
-			$x = $x[$p];
+			$x = &$x[$p];
 		}
-		$val = $x[$last] ?? $default;
+		$val = $x[$last];
 		unset($x[$last]);
 		return $val;
 	}
 
-	private function pushIndexValue(&$x, $index_name, $value) : void {
+	private function pushIndexValue(&$arr, $index_name, $value) : void {
 		$path = explode('/', $index_name);
 		$last = array_pop($path);
+		$x = &$arr;
 		foreach($path as $p){
-			$x = $x[$p] ?? [];
+			if(!isset($x[$p])){
+				$x[$p] = [];
+			}
+			$x = &$x[$p];
 		}
 		$x[$last] = $value;
 	}

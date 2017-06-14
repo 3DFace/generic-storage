@@ -16,19 +16,19 @@ abstract class GenericStorageTest extends TestCase {
 	public function testCorrectlySaved() : void {
 		$s = $this->createStorage();
 		$uid = new TestId();
-		$profile = new TestEntity($uid, 'Test User', 'user@test.php');
-		$s->saveItem($uid, $profile);
+		$entity = new TestEntity($uid, 'Test User', 'user@test.php', new TestData('asd', 10));
+		$s->saveItem($uid, $entity);
 		$loaded = $s->getItem($uid);
-		$this->assertEquals($profile, $loaded);
+		$this->assertEquals($entity, $loaded);
 	}
 
 	public function testRemoved() : void {
 		$s = $this->createStorage();
 		$uid = new TestId();
-		$profile = new TestEntity($uid, 'Test User', 'user@test.php');
-		$s->saveItem($uid, $profile);
+		$entity = new TestEntity($uid, 'Test User', 'user@test.php');
+		$s->saveItem($uid, $entity);
 		$loaded = $s->getItem($uid);
-		$this->assertEquals($profile, $loaded);
+		$this->assertEquals($entity, $loaded);
 		$s->removeItem($uid);
 		$must_be_null = $s->getItem($uid);
 		$this->assertNull($must_be_null);
@@ -38,14 +38,14 @@ abstract class GenericStorageTest extends TestCase {
 		$s = $this->createStorage();
 		$uid1 = new TestId();
 		$uid2 = new TestId();
-		$profile1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
-		$profile2 = new TestEntity($uid2, 'Test User 2', 'user@test.php');
-		$s->saveItem($uid1, $profile1);
-		$s->saveItem($uid2, $profile2);
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php');
+		$s->saveItem($uid1, $entity1);
+		$s->saveItem($uid2, $entity2);
 
 		$criteria = new Equals(new Reference('email'), new StringConstant('user@test.php'));
 		$loaded_arr = iterator_to_array($s->listByCriteria($criteria));
-		$this->assertEquals([$profile1, $profile2], $loaded_arr);
+		$this->assertEquals([$entity1, $entity2], $loaded_arr);
 
 		$criteria = new Equals(new Reference('email'), new StringConstant('no@test.php'));
 		$loaded_arr = iterator_to_array($s->listByCriteria($criteria));
@@ -55,12 +55,12 @@ abstract class GenericStorageTest extends TestCase {
 	public function testIdIndexWorks() : void {
 		$s = $this->createStorage();
 		$uid1 = new TestId();
-		$profile1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
-		$s->saveItem($uid1, $profile1);
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
+		$s->saveItem($uid1, $entity1);
 
 		$criteria = new Equals(new Reference('id'), new StringConstant((string)$uid1));
 		$loaded_arr = iterator_to_array($s->listByCriteria($criteria));
-		$this->assertEquals([$profile1], $loaded_arr);
+		$this->assertEquals([$entity1], $loaded_arr);
 
 		$criteria = new Equals(new Reference('id'), new StringConstant('asd'));
 		$loaded_arr = iterator_to_array($s->listByCriteria($criteria));
@@ -71,26 +71,26 @@ abstract class GenericStorageTest extends TestCase {
 		$s = $this->createStorage();
 		$uid1 = new TestId();
 		$uid2 = new TestId();
-		$profile1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
-		$profile2 = new TestEntity($uid2, 'Test User 2', 'user@test.php');
-		$s->saveItem($uid1, $profile1);
-		$s->saveItem($uid2, $profile2);
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php');
+		$s->saveItem($uid1, $entity1);
+		$s->saveItem($uid2, $entity2);
 
 		$loaded_arr = iterator_to_array($s->getItems([$uid1, $uid2]));
-		$this->assertEquals([$profile1, $profile2], $loaded_arr);
+		$this->assertEquals([$entity1, $entity2], $loaded_arr);
 	}
 
 	public function testListAllWorks() : void {
 		$s = $this->createStorage();
 		$uid1 = new TestId();
 		$uid2 = new TestId();
-		$profile1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
-		$profile2 = new TestEntity($uid2, 'Test User 2', 'user@test.php');
-		$s->saveItem($uid1, $profile1);
-		$s->saveItem($uid2, $profile2);
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php');
+		$s->saveItem($uid1, $entity1);
+		$s->saveItem($uid2, $entity2);
 
 		$loaded_arr = iterator_to_array($s->listAll());
-		$this->assertEquals([$profile1, $profile2], $loaded_arr);
+		$this->assertEquals([$entity1, $entity2], $loaded_arr);
 	}
 
 

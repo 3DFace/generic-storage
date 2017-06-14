@@ -16,6 +16,7 @@ class MyGenericStorageTest extends GenericStorageTest {
 			->setIdPropertyName('id')
 			->addColumns([
 				'email' => 'VARCHAR(128)',
+				'data/a' => 'VARCHAR(128)',
 			])
 			->addIndexes([
 				'INDEX email(email)',
