@@ -19,9 +19,9 @@ class MyStorageBuilder {
 	/** @var string */
 	private $idPropertyName;
 	/** @var string[] */
-	private $add_columns;
+	private $add_columns = [];
 	/** @var string[] */
-	private $add_indexes;
+	private $add_indexes = [];
 	/** @var bool */
 	private $has_unique_secondary;
 	/** @var callable */
