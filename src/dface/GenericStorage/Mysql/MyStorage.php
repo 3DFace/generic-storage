@@ -39,6 +39,10 @@ class MyStorage implements GenericStorage {
 	private $criteriaBuilder;
 	/** @var PlainNode */
 	private $selectAllFromTable;
+	/** @var int */
+	private $batchListSize;
+	/** @var PlainNode */
+	private $batchSuffix;
 
 	public function __construct(
 		string $className,
@@ -49,7 +53,8 @@ class MyStorage implements GenericStorage {
 		array $add_columns = [],
 		array $add_indexes = [],
 		$has_unique_secondary = false,
-		$temporary = false
+		$temporary = false,
+		$batch_list_size = 10000
 	) {
 		$this->className = $className;
 		$this->dbi = $dbi;
@@ -62,7 +67,12 @@ class MyStorage implements GenericStorage {
 		$this->has_unique_secondary = $has_unique_secondary;
 		$this->criteriaBuilder = new SqlCriteriaBuilder();
 		/** @noinspection SqlResolve */
-		$this->selectAllFromTable = $this->dbi->build('SELECT $data FROM {i}', $this->tableName);
+		$this->selectAllFromTable = $this->dbi->build('SELECT $seq_id, $data FROM {i}', $this->tableName);
+		if($batch_list_size < 1){
+			throw new \InvalidArgumentException("Batch list size must be greater then 1, $batch_list_size given");
+		}
+		$this->batchListSize = $batch_list_size;
+		$this->batchSuffix = $this->dbi->prepare(' AND $seq_id > {d} ORDER BY $seq_id LIMIT {d}');
 	}
 
 	/**
@@ -287,8 +297,12 @@ class MyStorage implements GenericStorage {
 	 * @throws MyStorageError
 	 */
 	public function listAll() : \traversable {
+		static $q1;
+		if($q1 === null){
+			$q1 = new PlainNode(0, ' WHERE 1 ');
+		}
 		try{
-			yield from $this->iterateOverDecoded($this->selectAllFromTable);
+			yield from $this->iterateOverDecoded(new CompositeNode([$this->selectAllFromTable, $q1]));
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
 		}
@@ -363,10 +377,19 @@ class MyStorage implements GenericStorage {
 		if($this->dedicatedConnectionFactory !== null){
 			yield from $this->iterateOverDedicated($query);
 		}else{
-			$list = $this->dbi->select($query);
-			foreach($list as $rec){
-				yield $rec;
-			}
+			$last_seq_id = 0;
+			do{
+				$found = 0;
+				$list = $this->dbi->select(new CompositeNode([
+					$query,
+					$this->dbi->build($this->batchSuffix, $last_seq_id, $this->batchListSize),
+				]));
+				foreach($list as $rec){
+					$found++;
+					$last_seq_id = $rec['$seq_id'];
+					yield $rec;
+				}
+			}while($found === $this->batchListSize);
 		}
 	}
 
@@ -380,10 +403,19 @@ class MyStorage implements GenericStorage {
 		/** @var MysqliConnection $dbi */
 		$dbi = call_user_func($this->dedicatedConnectionFactory);
 		try{
-			$list = $dbi->selectOpt($query, MYSQLI_USE_RESULT);
-			foreach($list as $rec){
-				yield $rec;
-			}
+			$last_seq_id = 0;
+			do{
+				$found = 0;
+				$list = $this->dbi->select(new CompositeNode([
+					$query,
+					$this->dbi->build($this->batchSuffix, $last_seq_id, $this->batchListSize),
+				]));
+				foreach($list as $rec){
+					$found++;
+					$last_seq_id = $rec['$seq_id'];
+					yield $rec;
+				}
+			}while($found === $this->batchListSize);
 		}finally{
 			$dbi->close();
 		}

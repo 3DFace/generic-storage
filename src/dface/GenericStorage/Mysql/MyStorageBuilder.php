@@ -26,6 +26,8 @@ class MyStorageBuilder {
 	private $dedicatedConnectionFactory;
 	/** @var bool */
 	private $temporary;
+	/** @var int */
+	private $batchListSize = 10000;
 
 	/**
 	 * MyStorageBuilder constructor.
@@ -69,6 +71,11 @@ class MyStorageBuilder {
 		return $this;
 	}
 
+	public function setBatchListSize($batchListSize) : MyStorageBuilder {
+		$this->batchListSize = $batchListSize;
+		return $this;
+	}
+
 	public function build() : MyStorage {
 		return new MyStorage(
 			$this->className,
@@ -79,8 +86,8 @@ class MyStorageBuilder {
 			$this->add_columns,
 			$this->add_indexes,
 			$this->has_unique_secondary,
-			$this->temporary
-		);
+			$this->temporary,
+			$this->batchListSize);
 	}
 
 }

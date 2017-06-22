@@ -21,6 +21,7 @@ class MyGenericStorageTest extends GenericStorageTest {
 			->addIndexes([
 				'INDEX email(email)',
 			])
+			->setBatchListSize(10)
 			->build();
 		$s->reset();
 		return $s;
