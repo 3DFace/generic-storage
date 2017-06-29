@@ -6,7 +6,7 @@ namespace dface\GenericStorage;
 use dface\GenericStorage\Generic\GenericStorage;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
 
-class MyGenericStorageTestBatched extends GenericStorageTest {
+class MyGenericStorageBatched1Test extends GenericStorageTest {
 
 	protected function createStorage() : GenericStorage {
 		$dbi = DbiFactory::getConnection();

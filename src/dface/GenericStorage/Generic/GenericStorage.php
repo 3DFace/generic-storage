@@ -40,17 +40,19 @@ interface GenericStorage {
 
 	/**
 	 * @param array[] $orderDef - list of pairs [`property`(string), `direction`(bool)]
+	 * @param int $limit
 	 * @return \traversable
 	 * @throws GenericStorageError
 	 */
-	public function listAll(array $orderDef = []) : \traversable;
+	public function listAll(array $orderDef = [], int $limit = 0) : \traversable;
 
 	/**
 	 * @param array[] $orderDef - list of pairs [`property`(string), `direction`(bool)]
 	 * @param Criteria $criteria
+	 * @param int $limit
 	 * @return \traversable
 	 * @throws GenericStorageError
 	 */
-	public function listByCriteria(Criteria $criteria, array $orderDef = []) : \traversable;
+	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : \traversable;
 
 }

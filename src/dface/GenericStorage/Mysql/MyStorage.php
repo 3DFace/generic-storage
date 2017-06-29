@@ -120,14 +120,14 @@ class MyStorage implements GenericStorage {
 				if(count($sub_list) === $batch_size){
 					$where = new PlainNode(0, ' WHERE `$id` IN ('.implode(',', $sub_list).')');
 					$node = new CompositeNode([$this->selectAllFromTable, $where]);
-					yield from $this->iterateOverDecoded($node, []);
+					yield from $this->iterateOverDecoded($node, [], 0);
 					$sub_list = [];
 				}
 			}
 			if($sub_list){
 				$where = new PlainNode(0, ' WHERE `$id` IN ('.implode(',', $sub_list).')');
 				$node = new CompositeNode([$this->selectAllFromTable, $where]);
-				yield from $this->iterateOverDecoded($node, []);
+				yield from $this->iterateOverDecoded($node, [], 0);
 			}
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
@@ -296,16 +296,17 @@ class MyStorage implements GenericStorage {
 
 	/**
 	 * @param array $orderDef
+	 * @param int $limit
 	 * @return \traversable
 	 * @throws MyStorageError
 	 */
-	public function listAll(array $orderDef = []) : \traversable {
+	public function listAll(array $orderDef = [], int $limit = 0) : \traversable {
 		static $q1;
 		if($q1 === null){
 			$q1 = new PlainNode(0, ' WHERE 1 ');
 		}
 		try{
-			yield from $this->iterateOverDecoded(new CompositeNode([$this->selectAllFromTable, $q1]), $orderDef);
+			yield from $this->iterateOverDecoded(new CompositeNode([$this->selectAllFromTable, $q1]), $orderDef, $limit);
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
 		}
@@ -314,13 +315,14 @@ class MyStorage implements GenericStorage {
 	/**
 	 * @param Criteria $criteria
 	 * @param array $orderDef
+	 * @param int $limit
 	 * @return \traversable
 	 * @throws MyStorageError
 	 */
-	public function listByCriteria(Criteria $criteria, array $orderDef = []) : \traversable {
+	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : \traversable {
 		try{
 			$where = new PlainNode(0, ' WHERE '.$this->makeWhere($criteria));
-			yield from $this->iterateOverDecoded(new CompositeNode([$this->selectAllFromTable, $where]), $orderDef);
+			yield from $this->iterateOverDecoded(new CompositeNode([$this->selectAllFromTable, $where]), $orderDef, $limit);
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
 		}
@@ -341,7 +343,7 @@ class MyStorage implements GenericStorage {
 
 	public function updateColumns() : void {
 		if($this->add_columns){
-			foreach($this->iterateOver($this->selectAllFromTable, []) as $rec){
+			foreach($this->iterateOver($this->selectAllFromTable, [], 0) as $rec){
 				$arr = json_decode($rec['$data'], true);
 				// TODO: don't update if columns contain correct values
 				$add_column_set_str = $this->createUpdateColumnsFragment($arr);
@@ -354,12 +356,13 @@ class MyStorage implements GenericStorage {
 
 	/**
 	 * @param Node $q
+	 * @param int $limit
 	 * @param $orderDef
 	 * @return \Generator|null
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
-	private function iterateOverDecoded(Node $q, array $orderDef) : ?\Generator {
-		foreach($this->iterateOver($q, $orderDef) as $rec){
+	private function iterateOverDecoded(Node $q, array $orderDef, int $limit) : ?\Generator {
+		foreach($this->iterateOver($q, $orderDef, $limit) as $rec){
 			$obj = $this->deserialize($rec);
 			yield $obj;
 		}
@@ -371,57 +374,72 @@ class MyStorage implements GenericStorage {
 	}
 
 	/**
-	 * @param $query
-	 * @param $orderDef
+	 * @param Node $query
+	 * @param int $limit
+	 * @param array[] $orderDef
 	 * @return \Generator
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
-	private function iterateOver(Node $query, array $orderDef) : \Generator {
+	private function iterateOver(Node $query, array $orderDef, int $limit) : \Generator {
 		if($this->dedicatedConnectionFactory !== null){
 			/** @var MysqliConnection $dbi */
 			$dbi = call_user_func($this->dedicatedConnectionFactory);
 			try{
-				yield from $this->iterateOverDbi($dbi, $query, $orderDef);
+				yield from $this->iterateOverDbi($dbi, $query, $orderDef, $limit);
 			}finally{
 				$dbi->close();
 			}
 		}else{
-			yield from $this->iterateOverDbi($this->dbi, $query, $orderDef);
+			yield from $this->iterateOverDbi($this->dbi, $query, $orderDef, $limit);
 		}
 	}
 
-	private function iterateOverDbi(MysqliConnection $dbi, Node $baseQuery, array $orderDef) : \Generator {
+	private function iterateOverDbi(MysqliConnection $dbi, Node $baseQuery, array $orderDef, int $limit) : \Generator {
 		if($orderDef){
 			if(count($orderDef) === 1 && $orderDef[0][0] === $this->idPropertyName){
 				if($this->batchListSize > 0){
 					if($orderDef[0][1]){
-						yield from $this->iterateOverDbiBatchedBySeqId($dbi, $baseQuery);
+						yield from $this->iterateOverDbiBatchedBySeqId($dbi, $baseQuery, $limit);
 					}else{
-						yield from $this->iterateOverDbiBatchedBySeqIdDesc($dbi, $baseQuery);
+						yield from $this->iterateOverDbiBatchedBySeqIdDesc($dbi, $baseQuery, $limit);
 					}
 				}else{
-					$query = new CompositeNode([
+					$nodes = [
 						$baseQuery,
-						$this->buildOrderBy($orderDef),
-					]);
+						$this->buildOrderBy($orderDef)
+					];
+					if($limit){
+						$nodes[] = new PlainNode(0, ' LIMIT '.$limit);
+					}
+					$query = new CompositeNode($nodes);
 					yield from $dbi->select($query);
 				}
 			}else{
-				$query = new CompositeNode([
+				$nodes = [
 					$baseQuery,
 					$this->buildOrderBy($orderDef),
-				]);
+				];
 				if($this->batchListSize > 0){
-					yield from $this->iterateOverDbiBatchedByLimit($dbi, $query);
+					$query = new CompositeNode($nodes);
+					yield from $this->iterateOverDbiBatchedByLimit($dbi, $query, $limit);
 				}else{
+					if($limit){
+						$nodes[] = new PlainNode(0, ' LIMIT '.$limit);
+					}
+					$query = new CompositeNode($nodes);
 					yield from $dbi->select($query);
 				}
 			}
 		}else{
 			if($this->batchListSize > 0){
-				yield from $this->iterateOverDbiBatchedBySeqId($dbi, $baseQuery);
+				yield from $this->iterateOverDbiBatchedBySeqId($dbi, $baseQuery, $limit);
 			}else{
-				yield from $dbi->select($baseQuery);
+				if($limit){
+					$query = new CompositeNode([$baseQuery, new PlainNode(0, 'LIMIT '.$limit)]);
+					yield from $dbi->select($query);
+				}else{
+					yield from $dbi->select($baseQuery);
+				}
 			}
 		}
 	}
@@ -442,56 +460,81 @@ class MyStorage implements GenericStorage {
 		return new PlainNode(0, ' ORDER BY '.implode(', ', $members));
 	}
 
-	private function iterateOverDbiBatchedBySeqId(MysqliConnection $dbi, Node $baseQuery) : \Generator {
+	private function iterateOverDbiBatchedBySeqId(MysqliConnection $dbi, Node $baseQuery, int $limit) : \Generator {
 		$last_seq_id = 0;
+		$loaded = 0;
 		do{
 			$found = 0;
+			$batch_size = $this->batchListSize;
+			if($limit > 0){
+				$to = $loaded + $this->batchListSize;
+				if($to > $limit){
+					$batch_size -= $to - $limit;
+				}
+			}
 			$list = $dbi->select(new CompositeNode([
 				$baseQuery,
-				$dbi->build($this->batchSuffix, $last_seq_id, $this->batchListSize),
+				$dbi->build($this->batchSuffix, $last_seq_id, $batch_size),
 			]));
 			foreach($list as $rec){
 				$found++;
+				$loaded++;
 				$last_seq_id = $rec['$seq_id'];
 				yield $rec;
 			}
-		}while($found === $this->batchListSize);
+		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
 
-	private function iterateOverDbiBatchedBySeqIdDesc(MysqliConnection $dbi, Node $baseQuery) : \Generator {
+	private function iterateOverDbiBatchedBySeqIdDesc(MysqliConnection $dbi, Node $baseQuery, int $limit) : \Generator {
 		$last_seq_id = PHP_INT_MAX;
+		$loaded = 0;
 		do{
 			$found = 0;
+			$batch_size = $this->batchListSize;
+			if($limit > 0){
+				$to = $loaded + $this->batchListSize;
+				if($to > $limit){
+					$batch_size -= $to - $limit;
+				}
+			}
 			$list = $dbi->select(new CompositeNode([
 				$baseQuery,
-				$dbi->build($this->batchSuffixDesc, $last_seq_id, $this->batchListSize),
+				$dbi->build($this->batchSuffixDesc, $last_seq_id, $batch_size),
 			]));
 			foreach($list as $rec){
 				$found++;
+				$loaded++;
 				$last_seq_id = $rec['$seq_id'];
 				yield $rec;
 			}
-		}while($found === $this->batchListSize);
+		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
 
-	private function iterateOverDbiBatchedByLimit(MysqliConnection $dbi, Node $baseQuery) : \Generator {
+	private function iterateOverDbiBatchedByLimit(MysqliConnection $dbi, Node $baseQuery, int $limit) : \Generator {
 		static $q1;
 		if($q1 === null){
 			$q1 = $dbi->prepare(' LIMIT {d}, {d}');
 		}
-		$from = 0;
+		$loaded = 0;
 		do{
 			$found = 0;
+			$batch_size = $this->batchListSize;
+			if($limit > 0){
+				$to = $loaded + $this->batchListSize;
+				if($to > $limit){
+					$batch_size -= $to - $limit;
+				}
+			}
 			$list = $dbi->select(new CompositeNode([
 				$baseQuery,
-				$dbi->build($q1, $from, $this->batchListSize),
+				$dbi->build($q1, $loaded, $batch_size),
 			]));
 			foreach($list as $rec){
 				$found++;
+				$loaded++;
 				yield $rec;
 			}
-			$from += $this->batchListSize;
-		}while($found === $this->batchListSize);
+		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
 
 	public function reset() : void {

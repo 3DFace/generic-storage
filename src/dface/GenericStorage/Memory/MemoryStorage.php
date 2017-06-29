@@ -57,17 +57,20 @@ class MemoryStorage implements GenericStorage {
 		unset($this->storage[$k]);
 	}
 
-	public function listAll(array $orderDef = []) : \traversable {
+	public function listAll(array $orderDef = [], int $limit = 0) : \traversable {
 		$values = array_values($this->storage);
 		if($orderDef){
 			usort($values, function ($i1, $i2) use ($orderDef){
 				return $this->compare($i1, $i2, $orderDef);
 			});
 		}
+		if($limit){
+			$values = array_splice($values, 0, $limit);
+		}
 		return new \ArrayIterator($values);
 	}
 
-	public function listByCriteria(Criteria $criteria, array $orderDef = []) : \traversable {
+	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : \traversable {
 		$fn = $this->criteriaBuilder->build($criteria);
 		$values = [];
 		foreach($this->storage as $item){
@@ -80,6 +83,9 @@ class MemoryStorage implements GenericStorage {
 			usort($values, function ($i1, $i2) use ($orderDef){
 				return $this->compare($i1, $i2, $orderDef);
 			});
+		}
+		if($limit){
+			$values = array_splice($values, 0, $limit);
 		}
 		/** @noinspection PhpIncompatibleReturnTypeInspection */
 		return new \ArrayIterator($values);
