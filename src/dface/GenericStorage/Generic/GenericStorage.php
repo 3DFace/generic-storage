@@ -39,18 +39,18 @@ interface GenericStorage {
 	public function removeItem($id) : void;
 
 	/**
+	 * @param array[] $orderDef - list of pairs [`property`(string), `direction`(bool)]
 	 * @return \traversable
-	 *
 	 * @throws GenericStorageError
 	 */
-	public function listAll() : \traversable;
+	public function listAll(array $orderDef = []) : \traversable;
 
 	/**
+	 * @param array[] $orderDef - list of pairs [`property`(string), `direction`(bool)]
 	 * @param Criteria $criteria
 	 * @return \traversable
-	 *
 	 * @throws GenericStorageError
 	 */
-	public function listByCriteria(Criteria $criteria) : \traversable;
+	public function listByCriteria(Criteria $criteria, array $orderDef = []) : \traversable;
 
 }

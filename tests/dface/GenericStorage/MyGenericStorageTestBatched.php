@@ -6,7 +6,7 @@ namespace dface\GenericStorage;
 use dface\GenericStorage\Generic\GenericStorage;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
 
-class MyGenericStorageTest extends GenericStorageTest {
+class MyGenericStorageTestBatched extends GenericStorageTest {
 
 	protected function createStorage() : GenericStorage {
 		$dbi = DbiFactory::getConnection();
@@ -21,7 +21,7 @@ class MyGenericStorageTest extends GenericStorageTest {
 			->addIndexes([
 				'INDEX email(email)',
 			])
-			->setBatchListSize(0)
+			->setBatchListSize(1)
 			->build();
 		$s->reset();
 		return $s;
