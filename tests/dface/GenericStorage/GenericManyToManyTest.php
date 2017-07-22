@@ -25,7 +25,6 @@ abstract class GenericManyToManyTest extends TestCase {
 	}
 
 	public function testManyToOne() : void {
-		$this->assoc = new MemoryManyToMany();
 		$l1 = new TestId();
 		$l2 = new TestId();
 		$r = new TestId();
@@ -40,7 +39,7 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assertEquals([$r], $byLeft);
 
 		$byRight = iterator_to_array($this->assoc->getAllByRight($r));
-		$this->assertEquals([$l1, $l2], $byRight);
+		$this->assertSetIs([$l1, $l2], $byRight);
 
 		$this->assoc->clearRight($r);
 		$byRight = iterator_to_array($this->assoc->getAllByRight($r));
@@ -48,7 +47,6 @@ abstract class GenericManyToManyTest extends TestCase {
 	}
 
 	public function testOneToMany() : void {
-		$this->assoc = new MemoryManyToMany();
 		$l = new TestId();
 
 		$r1 = new TestId();
@@ -57,7 +55,7 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assoc->add($l, $r2);
 
 		$byLeft = iterator_to_array($this->assoc->getAllByLeft($l));
-		$this->assertEquals([$r1, $r2], $byLeft);
+		$this->assertSetIs([$r1, $r2], $byLeft);
 
 		$byRight = iterator_to_array($this->assoc->getAllByRight($r1));
 		$this->assertEquals([$l], $byRight);
@@ -68,6 +66,62 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assoc->clearLeft($l);
 		$byLeft = iterator_to_array($this->assoc->getAllByLeft($l));
 		$this->assertEquals([], $byLeft);
+	}
+
+	public function testRemove() : void {
+		$l = new TestId();
+		$r = new TestId();
+		$this->assoc->add($l, $r);
+		$this->assoc->remove($l, $r);
+
+		$byLeft = iterator_to_array($this->assoc->getAllByLeft($l));
+		$this->assertEquals([], $byLeft);
+
+		$byRight = iterator_to_array($this->assoc->getAllByRight($r));
+		$this->assertEquals([], $byRight);
+	}
+
+	public function testClearLeft() : void {
+		$l1 = new TestId();
+		$l2 = new TestId();
+		$r1 = new TestId();
+		$r2 = new TestId();
+		$r3 = new TestId();
+		$r4 = new TestId();
+
+		$this->assoc->add($l1, $r1);
+		$this->assoc->add($l1, $r2);
+		$this->assoc->add($l2, $r3);
+		$this->assoc->add($l2, $r4);
+
+		$this->assoc->clearLeft($l1);
+		$byLeft = iterator_to_array($this->assoc->getAllByLeft($l2));
+		$this->assertSetIs([$r3, $r4], $byLeft);
+	}
+
+	public function testClearRight() : void {
+		$l1 = new TestId();
+		$l2 = new TestId();
+		$l3 = new TestId();
+		$l4 = new TestId();
+		$r1 = new TestId();
+		$r2 = new TestId();
+
+		$this->assoc->add($l1, $r1);
+		$this->assoc->add($l2, $r1);
+		$this->assoc->add($l3, $r2);
+		$this->assoc->add($l4, $r2);
+
+		$this->assoc->clearRight($r1);
+		$byRight = iterator_to_array($this->assoc->getAllByRight($r2));
+		$this->assertSetIs([$l3, $l4], $byRight);
+	}
+
+	private function assertSetIs(array $expected, array $set){
+		$this->assertCount(count($expected), $set);
+		foreach($expected as $e){
+			$this->assertTrue(in_array($e, $set, false));
+		}
 	}
 
 }

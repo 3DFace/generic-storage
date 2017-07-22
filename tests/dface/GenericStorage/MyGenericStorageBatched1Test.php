@@ -8,10 +8,10 @@ use dface\GenericStorage\Mysql\MyStorageBuilder;
 
 class MyGenericStorageBatched1Test extends GenericStorageTest {
 
-	protected function createStorage() : GenericStorage {
+	protected function setUp() {
 		$dbi = DbiFactory::getConnection();
 		$dbiFac = DbiFactory::getConnectionFactory();
-		$s = (new MyStorageBuilder(TestEntity::class, $dbi, 'test_gen_storage'))
+		$this->storage = (new MyStorageBuilder(TestEntity::class, $dbi, 'test_gen_storage'))
 			->setDedicatedConnectionFactory($dbiFac)
 			->setIdPropertyName('id')
 			->addColumns([
@@ -23,8 +23,7 @@ class MyGenericStorageBatched1Test extends GenericStorageTest {
 			])
 			->setBatchListSize(1)
 			->build();
-		$s->reset();
-		return $s;
+		$this->storage->reset();
 	}
 
 }

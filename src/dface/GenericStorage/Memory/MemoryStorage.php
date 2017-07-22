@@ -60,8 +60,9 @@ class MemoryStorage implements GenericStorage {
 	public function listAll(array $orderDef = [], int $limit = 0) : \traversable {
 		$values = array_values($this->storage);
 		if($orderDef){
-			usort($values, function ($i1, $i2) use ($orderDef){
-				return $this->compare($i1, $i2, $orderDef);
+			$orderComparator = new MemoryOrderDefComparator($orderDef, $this->navigator, $this->comparator);
+			usort($values, function ($i1, $i2) use ($orderComparator){
+				return $orderComparator->compare($i1, $i2);
 			});
 		}
 		if($limit){
@@ -80,8 +81,9 @@ class MemoryStorage implements GenericStorage {
 			}
 		}
 		if($orderDef){
-			usort($values, function ($i1, $i2) use ($orderDef){
-				return $this->compare($i1, $i2, $orderDef);
+			$orderComparator = new MemoryOrderDefComparator($orderDef, $this->navigator, $this->comparator);
+			usort($values, function ($i1, $i2) use ($orderComparator){
+				return $orderComparator->compare($i1, $i2);
 			});
 		}
 		if($limit){
@@ -89,20 +91,6 @@ class MemoryStorage implements GenericStorage {
 		}
 		/** @noinspection PhpIncompatibleReturnTypeInspection */
 		return new \ArrayIterator($values);
-	}
-
-	private function compare(\JsonSerializable $i1, \JsonSerializable $i2, array $orderDef){
-		$arr1 = $i1->jsonSerialize();
-		$arr2 = $i2->jsonSerialize();
-		foreach($orderDef as [$property, $asc]){
-			$v1 = $this->navigator->getValue($arr1, $property);
-			$v2 = $this->navigator->getValue($arr2, $property);
-			$x = $this->comparator->compare($v1, $v2);
-			if($x !== 0){
-				return $asc ? $x : -$x;
-			}
-		}
-		return 0;
 	}
 
 }

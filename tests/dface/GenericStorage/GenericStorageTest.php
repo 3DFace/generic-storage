@@ -12,10 +12,22 @@ use PHPUnit\Framework\TestCase;
 
 abstract class GenericStorageTest extends TestCase {
 
-	abstract protected function createStorage() : GenericStorage;
+	/** @var GenericStorage */
+	protected $storage;
+
+	public function testWrongTypeDoNotPass() : void {
+		$s = $this->storage;
+		$uid = new TestId();
+		$this->expectException(\InvalidArgumentException::class);
+		$s->saveItem($uid, new class() implements \JsonSerializable {
+			public function jsonSerialize() {
+				return [];
+			}
+		});
+	}
 
 	public function testCorrectlySaved() : void {
-		$s = $this->createStorage();
+		$s = $this->storage;
 		$uid = new TestId();
 		$entity = new TestEntity($uid, 'Test User', 'user@test.php', new TestData('asd', 10));
 		$s->saveItem($uid, $entity);
@@ -24,7 +36,7 @@ abstract class GenericStorageTest extends TestCase {
 	}
 
 	public function testRemoved() : void {
-		$s = $this->createStorage();
+		$s = $this->storage;
 		$uid = new TestId();
 		$entity = new TestEntity($uid, 'Test User', 'user@test.php');
 		$s->saveItem($uid, $entity);
@@ -36,7 +48,7 @@ abstract class GenericStorageTest extends TestCase {
 	}
 
 	public function testIndexWorks() : void {
-		$s = $this->createStorage();
+		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
@@ -54,7 +66,7 @@ abstract class GenericStorageTest extends TestCase {
 	}
 
 	public function testIdIndexWorks() : void {
-		$s = $this->createStorage();
+		$s = $this->storage;
 		$uid1 = new TestId();
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
 		$s->saveItem($uid1, $entity1);
@@ -69,7 +81,7 @@ abstract class GenericStorageTest extends TestCase {
 	}
 
 	public function testMultiGetWorks() : void {
-		$s = $this->createStorage();
+		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
@@ -82,7 +94,7 @@ abstract class GenericStorageTest extends TestCase {
 	}
 
 	public function testListAllWorks() : void {
-		$s = $this->createStorage();
+		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
@@ -95,7 +107,7 @@ abstract class GenericStorageTest extends TestCase {
 	}
 
 	public function testListAllOrderedWorks() : void {
-		$s = $this->createStorage();
+		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$uid3 = new TestId();
@@ -114,7 +126,7 @@ abstract class GenericStorageTest extends TestCase {
 	}
 
 	public function testListAllOrderedWithLimitWorks() : void {
-		$s = $this->createStorage();
+		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$uid3 = new TestId();
@@ -133,7 +145,7 @@ abstract class GenericStorageTest extends TestCase {
 	}
 
 	public function testListFilteredAndOrderedWorks() : void {
-		$s = $this->createStorage();
+		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$uid3 = new TestId();
@@ -154,7 +166,7 @@ abstract class GenericStorageTest extends TestCase {
 	}
 
 	public function testListFilteredAndOrderedWithLimitWorks() : void {
-		$s = $this->createStorage();
+		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$uid3 = new TestId();
@@ -175,7 +187,7 @@ abstract class GenericStorageTest extends TestCase {
 	}
 
 	public function testListAllOrderByIdWorks() : void {
-		$s = $this->createStorage();
+		$s = $this->storage;
 		$uid1 = new TestId(0x00000000000000000000000000000001);
 		$uid2 = new TestId(0x00000000000000000000000000000002);
 		$uid3 = new TestId(0x00000000000000000000000000000003);
@@ -194,7 +206,7 @@ abstract class GenericStorageTest extends TestCase {
 	}
 
 	public function testListAllOrderByIdWithLimitWorks() : void {
-		$s = $this->createStorage();
+		$s = $this->storage;
 		$uid1 = new TestId(0x00000000000000000000000000000001);
 		$uid2 = new TestId(0x00000000000000000000000000000002);
 		$uid3 = new TestId(0x00000000000000000000000000000003);

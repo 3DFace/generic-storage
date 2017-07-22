@@ -3,15 +3,21 @@
 
 namespace dface\GenericStorage;
 
-use dface\GenericStorage\Generic\GenericStorage;
+use dface\criteria\IsNull;
+use dface\criteria\Reference;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
+use dface\GenericStorage\Mysql\MyStorageError;
+use dface\Mysql\MysqliConnection;
 
 class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 
-	protected function createStorage() : GenericStorage {
-		$dbi = DbiFactory::getConnection();
+	/** @var MysqliConnection */
+	protected $dbi;
+
+	protected function setUp() {
+		$this->dbi = DbiFactory::getConnection();
 		$dbiFac = DbiFactory::getConnectionFactory();
-		$s = (new MyStorageBuilder(TestEntity::class, $dbi, 'test_gen_storage'))
+		$this->storage = (new MyStorageBuilder(TestEntity::class, $this->dbi, 'test_gen_storage'))
 			->setDedicatedConnectionFactory($dbiFac)
 			->setIdPropertyName('id')
 			->addColumns([
@@ -23,8 +29,48 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 			])
 			->setBatchListSize(0)
 			->build();
-		$s->reset();
-		return $s;
+		$this->storage->reset();
+	}
+
+	private function broke(){
+		/** @noinspection SqlResolve */
+		$this->dbi->query('DROP TABLE test_gen_storage');
+	}
+
+	public function testListAllTroubles(){
+		$this->broke();
+		$this->expectException(MyStorageError::class);
+		iterator_to_array($this->storage->listAll());
+	}
+
+	public function testListByCriteriaTroubles(){
+		$this->broke();
+		$this->expectException(MyStorageError::class);
+		iterator_to_array($this->storage->listByCriteria(new IsNull(new Reference('x'))));
+	}
+
+	public function testGetItemsTroubles(){
+		$this->broke();
+		$this->expectException(MyStorageError::class);
+		iterator_to_array($this->storage->getItems([new TestId()]));
+	}
+
+	public function testGetItemTroubles(){
+		$this->broke();
+		$this->expectException(MyStorageError::class);
+		$this->storage->getItem(new TestId());
+	}
+
+	public function testSaveItemTroubles(){
+		$this->broke();
+		$this->expectException(MyStorageError::class);
+		$this->storage->saveItem($id = new TestId(), new TestEntity($id, 'name', 'none'));
+	}
+
+	public function testRemoveItemTroubles(){
+		$this->broke();
+		$this->expectException(MyStorageError::class);
+		$this->storage->removeItem(new TestId());
 	}
 
 }
