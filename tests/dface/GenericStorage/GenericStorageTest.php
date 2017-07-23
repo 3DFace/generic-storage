@@ -47,6 +47,17 @@ abstract class GenericStorageTest extends TestCase {
 		$this->assertNull($must_be_null);
 	}
 
+	public function testOverwrite() : void {
+		$s = $this->storage;
+		$uid = new TestId();
+		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10));
+		$entity2 = new TestEntity($uid, 'Test User 2', 'user@test.php', new TestData('asd', 10));
+		$s->saveItem($uid, $entity1);
+		$s->saveItem($uid, $entity2);
+		$loaded = $s->getItem($uid);
+		$this->assertEquals($entity2, $loaded);
+	}
+
 	public function testIndexWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -84,13 +95,16 @@ abstract class GenericStorageTest extends TestCase {
 		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
+		$uid3 = new TestId();
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php');
+		$entity3 = new TestEntity($uid3, 'Test User 3', 'user@test.php');
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
+		$s->saveItem($uid3, $entity3);
 
-		$loaded_arr = iterator_to_array($s->getItems([$uid1, $uid2]));
-		$this->assertEquals([$entity1, $entity2], $loaded_arr);
+		$loaded_arr = iterator_to_array($s->getItems([$uid1, $uid3]), false);
+		$this->assertSetIs([$entity1, $entity3], $loaded_arr);
 	}
 
 	public function testListAllWorks() : void {
@@ -142,6 +156,22 @@ abstract class GenericStorageTest extends TestCase {
 
 		$loaded_arr = iterator_to_array($s->listAll([['email', true]], 2));
 		$this->assertEquals([$entity1, $entity2], $loaded_arr);
+	}
+
+	public function testListAllUnorderedWithLimitWorks() : void {
+		$s = $this->storage;
+		$uid1 = new TestId();
+		$uid2 = new TestId();
+		$uid3 = new TestId();
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php');
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php');
+		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php');
+		$s->saveItem($uid1, $entity1);
+		$s->saveItem($uid2, $entity2);
+		$s->saveItem($uid3, $entity3);
+
+		$loaded_arr = iterator_to_array($s->listAll([], 3));
+		$this->assertEquals([$entity1, $entity2, $entity3], $loaded_arr);
 	}
 
 	public function testListFilteredAndOrderedWorks() : void {
@@ -222,6 +252,13 @@ abstract class GenericStorageTest extends TestCase {
 
 		$loaded_arr = iterator_to_array($s->listAll([['id', true]], 2));
 		$this->assertEquals([$entity1, $entity2], $loaded_arr);
+	}
+
+	private function assertSetIs(array $expected, array $set){
+		$this->assertCount(count($expected), $set);
+		foreach($expected as $e){
+			$this->assertTrue(in_array($e, $set, false));
+		}
 	}
 
 }

@@ -22,6 +22,7 @@ class MyGenericStorageBatched1Test extends GenericStorageTest {
 				'INDEX email(email)',
 			])
 			->setBatchListSize(1)
+			->setIdBatchSize(1)
 			->build();
 		$this->storage->reset();
 	}

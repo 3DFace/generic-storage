@@ -21,13 +21,15 @@ class MyStorageBuilder {
 	/** @var string[] */
 	private $add_indexes = [];
 	/** @var bool */
-	private $has_unique_secondary;
+	private $has_unique_secondary = false;
 	/** @var callable */
 	private $dedicatedConnectionFactory;
 	/** @var bool */
-	private $temporary;
+	private $temporary = false;
 	/** @var int */
 	private $batchListSize = 10000;
+	/** @var int */
+	private $idBatchSize = 500;
 
 	/**
 	 * MyStorageBuilder constructor.
@@ -76,6 +78,11 @@ class MyStorageBuilder {
 		return $this;
 	}
 
+	public function setIdBatchSize($idBatchSize) : MyStorageBuilder {
+		$this->idBatchSize = $idBatchSize;
+		return $this;
+	}
+
 	public function build() : MyStorage {
 		return new MyStorage(
 			$this->className,
@@ -87,7 +94,8 @@ class MyStorageBuilder {
 			$this->add_indexes,
 			$this->has_unique_secondary,
 			$this->temporary,
-			$this->batchListSize);
+			$this->batchListSize,
+			$this->idBatchSize);
 	}
 
 }

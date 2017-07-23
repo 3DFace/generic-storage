@@ -16,9 +16,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 
 	protected function setUp() {
 		$this->dbi = DbiFactory::getConnection();
-		$dbiFac = DbiFactory::getConnectionFactory();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $this->dbi, 'test_gen_storage'))
-			->setDedicatedConnectionFactory($dbiFac)
 			->setIdPropertyName('id')
 			->addColumns([
 				'email' => 'VARCHAR(128)',

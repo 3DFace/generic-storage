@@ -41,6 +41,8 @@ class MyStorage implements GenericStorage {
 	private $selectAllFromTable;
 	/** @var int */
 	private $batchListSize;
+	/** @var int */
+	private $idBatchSize;
 	/** @var PlainNode */
 	private $batchSuffix;
 	/** @var PlainNode */
@@ -54,9 +56,10 @@ class MyStorage implements GenericStorage {
 		string $idPropertyName = null,
 		array $add_columns = [],
 		array $add_indexes = [],
-		$has_unique_secondary = false,
-		$temporary = false,
-		$batch_list_size = 10000
+		bool $has_unique_secondary = false,
+		bool $temporary = false,
+		int $batch_list_size = 10000,
+		int $id_batch_size = 500
 	) {
 		$this->className = $className;
 		$this->dbi = $dbi;
@@ -71,11 +74,15 @@ class MyStorage implements GenericStorage {
 		/** @noinspection SqlResolve */
 		$this->selectAllFromTable = $this->dbi->build('SELECT $seq_id, $data FROM {i}', $this->tableName);
 		if($batch_list_size < 0){
-			throw new \InvalidArgumentException("Batch list size must >=0, $batch_list_size given");
+			throw new \InvalidArgumentException("Batch list size must be >=0, $batch_list_size given");
 		}
 		$this->batchListSize = $batch_list_size;
 		$this->batchSuffix = $this->dbi->prepare(' AND $seq_id > {d} ORDER BY $seq_id LIMIT {d}');
 		$this->batchSuffixDesc = $this->dbi->prepare(' AND $seq_id < {d} ORDER BY $seq_id DESC LIMIT {d}');
+		if($id_batch_size < 1){
+			throw new \InvalidArgumentException("Id batch size must be >0, $id_batch_size given");
+		}
+		$this->idBatchSize = $id_batch_size;
 	}
 
 	/**
@@ -113,11 +120,10 @@ class MyStorage implements GenericStorage {
 			if($q1 === null){
 				$q1 = $this->dbi->prepare('UNHEX({s})');
 			}
-			$batch_size = 500;
 			$sub_list = [];
 			foreach($ids as $id){
 				$sub_list[] = $this->dbi->build($q1, $id);
-				if(count($sub_list) === $batch_size){
+				if(count($sub_list) === $this->idBatchSize){
 					$where = new PlainNode(0, ' WHERE `$id` IN ('.implode(',', $sub_list).')');
 					$node = new CompositeNode([$this->selectAllFromTable, $where]);
 					yield from $this->iterateOverDecoded($node, [], 0);
@@ -167,9 +173,6 @@ class MyStorage implements GenericStorage {
 	}
 
 	private function serialize($id, array $arr) : ?string {
-		if(!$arr){
-			return null;
-		}
 		$data = json_encode($arr, JSON_UNESCAPED_UNICODE);
 		if(($len = strlen($data)) > 65535){
 			throw new MyStorageError("Can't write $len bytes as $this->className#$id data at ".self::class);
@@ -200,7 +203,7 @@ class MyStorage implements GenericStorage {
 		static $q;
 		if($q === null){
 			/** @noinspection SqlResolve */
-			$q = $this->dbi->prepare('INSERT INTO {i:1} SET `$id`={s:2}, `$data`={s:3} ');
+			$q = $this->dbi->prepare('INSERT INTO {i:1} SET `$id`=UNHEX({s:2}), `$data`={s:3} ');
 		}
 		$node = new CompositeNode([$q, $add_column_set_node]);
 		$this->dbi->update($node, $this->tableName, $id, $data);
@@ -343,7 +346,9 @@ class MyStorage implements GenericStorage {
 
 	public function updateColumns() : void {
 		if($this->add_columns){
-			foreach($this->iterateOver($this->selectAllFromTable, [], 0) as $rec){
+			$all = new PlainNode(0, ' WHERE 1 ');
+			$it = $this->iterateOver(new CompositeNode([$this->selectAllFromTable, $all]), [], 0);
+			foreach($it as $rec){
 				$arr = json_decode($rec['$data'], true);
 				// TODO: don't update if columns contain correct values
 				$add_column_set_str = $this->createUpdateColumnsFragment($arr);
