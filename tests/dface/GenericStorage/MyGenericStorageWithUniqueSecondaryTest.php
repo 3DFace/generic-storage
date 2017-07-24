@@ -79,7 +79,7 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 		$s->updateColumns();
-		$loaded = iterator_to_array($s->listAll());
+		$loaded = iterator_to_array($s->listAll(), false);
 		$this->assertEquals([$entity1, $entity2], $loaded);
 	}
 

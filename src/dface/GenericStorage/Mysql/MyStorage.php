@@ -72,7 +72,7 @@ class MyStorage implements GenericStorage {
 		$this->has_unique_secondary = $has_unique_secondary;
 		$this->criteriaBuilder = new SqlCriteriaBuilder();
 		/** @noinspection SqlResolve */
-		$this->selectAllFromTable = $this->dbi->build('SELECT $seq_id, $data FROM {i}', $this->tableName);
+		$this->selectAllFromTable = $this->dbi->build('SELECT $seq_id, LOWER(HEX($id)) as $id, $data FROM {i}', $this->tableName);
 		if($batch_list_size < 0){
 			throw new \InvalidArgumentException("Batch list size must be >=0, $batch_list_size given");
 		}
@@ -367,9 +367,9 @@ class MyStorage implements GenericStorage {
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
 	private function iterateOverDecoded(Node $q, array $orderDef, int $limit) : ?\Generator {
-		foreach($this->iterateOver($q, $orderDef, $limit) as $rec){
+		foreach($this->iterateOver($q, $orderDef, $limit) as $k=>$rec){
 			$obj = $this->deserialize($rec);
-			yield $obj;
+			yield $k=>$obj;
 		}
 	}
 
@@ -417,7 +417,7 @@ class MyStorage implements GenericStorage {
 						$nodes[] = new PlainNode(0, ' LIMIT '.$limit);
 					}
 					$query = new CompositeNode($nodes);
-					yield from $dbi->select($query);
+					yield from $this->iterate($dbi, $query);
 				}
 			}else{
 				$nodes = [
@@ -432,7 +432,7 @@ class MyStorage implements GenericStorage {
 						$nodes[] = new PlainNode(0, ' LIMIT '.$limit);
 					}
 					$query = new CompositeNode($nodes);
-					yield from $dbi->select($query);
+					yield from $this->iterate($dbi, $query);
 				}
 			}
 		}else{
@@ -441,9 +441,9 @@ class MyStorage implements GenericStorage {
 			}else{
 				if($limit){
 					$query = new CompositeNode([$baseQuery, new PlainNode(0, 'LIMIT '.$limit)]);
-					yield from $dbi->select($query);
+					yield from $this->iterate($dbi, $query);
 				}else{
-					yield from $dbi->select($baseQuery);
+					yield from $this->iterate($dbi, $baseQuery);
 				}
 			}
 		}
@@ -465,6 +465,13 @@ class MyStorage implements GenericStorage {
 		return new PlainNode(0, ' ORDER BY '.implode(', ', $members));
 	}
 
+	private function iterate(MysqliConnection $dbi, Node $baseQuery){
+		$it = $dbi->query($baseQuery);
+		foreach($it as $rec){
+			yield $rec['$id'] => $rec;
+		}
+	}
+
 	private function iterateOverDbiBatchedBySeqId(MysqliConnection $dbi, Node $baseQuery, int $limit) : \Generator {
 		$last_seq_id = 0;
 		$loaded = 0;
@@ -477,7 +484,7 @@ class MyStorage implements GenericStorage {
 					$batch_size -= $to - $limit;
 				}
 			}
-			$list = $dbi->select(new CompositeNode([
+			$list = $dbi->query(new CompositeNode([
 				$baseQuery,
 				$dbi->build($this->batchSuffix, $last_seq_id, $batch_size),
 			]));
@@ -485,7 +492,7 @@ class MyStorage implements GenericStorage {
 				$found++;
 				$loaded++;
 				$last_seq_id = $rec['$seq_id'];
-				yield $rec;
+				yield $rec['$id'] => $rec;
 			}
 		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
@@ -502,7 +509,7 @@ class MyStorage implements GenericStorage {
 					$batch_size -= $to - $limit;
 				}
 			}
-			$list = $dbi->select(new CompositeNode([
+			$list = $dbi->query(new CompositeNode([
 				$baseQuery,
 				$dbi->build($this->batchSuffixDesc, $last_seq_id, $batch_size),
 			]));
@@ -510,7 +517,7 @@ class MyStorage implements GenericStorage {
 				$found++;
 				$loaded++;
 				$last_seq_id = $rec['$seq_id'];
-				yield $rec;
+				yield $rec['$id'] => $rec;
 			}
 		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
@@ -530,14 +537,14 @@ class MyStorage implements GenericStorage {
 					$batch_size -= $to - $limit;
 				}
 			}
-			$list = $dbi->select(new CompositeNode([
+			$list = $dbi->query(new CompositeNode([
 				$baseQuery,
 				$dbi->build($q1, $loaded, $batch_size),
 			]));
 			foreach($list as $rec){
 				$found++;
 				$loaded++;
-				yield $rec;
+				yield $rec['$id'] => $rec;
 			}
 		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}

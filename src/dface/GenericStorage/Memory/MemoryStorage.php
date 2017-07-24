@@ -39,7 +39,7 @@ class MemoryStorage implements GenericStorage {
 		foreach($ids as $id){
 			$k = (string)$id;
 			if(isset($this->storage[$k])){
-				yield $this->storage[$k];
+				yield $k => $this->storage[$k];
 			}
 		}
 	}
@@ -58,15 +58,15 @@ class MemoryStorage implements GenericStorage {
 	}
 
 	public function listAll(array $orderDef = [], int $limit = 0) : \traversable {
-		$values = array_values($this->storage);
+		$values = $this->storage;
 		if($orderDef){
 			$orderComparator = new MemoryOrderDefComparator($orderDef, $this->navigator, $this->comparator);
-			usort($values, function ($i1, $i2) use ($orderComparator){
+			uasort($values, function ($i1, $i2) use ($orderComparator){
 				return $orderComparator->compare($i1, $i2);
 			});
 		}
 		if($limit){
-			$values = array_splice($values, 0, $limit);
+			$values = array_slice($values, 0, $limit, true);
 		}
 		return new \ArrayIterator($values);
 	}
@@ -74,20 +74,20 @@ class MemoryStorage implements GenericStorage {
 	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : \traversable {
 		$fn = $this->criteriaBuilder->build($criteria);
 		$values = [];
-		foreach($this->storage as $item){
+		foreach($this->storage as $k=>$item){
 			$arr = $item->jsonSerialize();
 			if($fn($arr)){
-				$values[] = $item;
+				$values[$k] = $item;
 			}
 		}
 		if($orderDef){
 			$orderComparator = new MemoryOrderDefComparator($orderDef, $this->navigator, $this->comparator);
-			usort($values, function ($i1, $i2) use ($orderComparator){
+			uasort($values, function ($i1, $i2) use ($orderComparator){
 				return $orderComparator->compare($i1, $i2);
 			});
 		}
 		if($limit){
-			$values = array_splice($values, 0, $limit);
+			$values = array_slice($values, 0, $limit, true);
 		}
 		/** @noinspection PhpIncompatibleReturnTypeInspection */
 		return new \ArrayIterator($values);
