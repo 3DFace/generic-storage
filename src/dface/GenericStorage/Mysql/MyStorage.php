@@ -467,8 +467,12 @@ class MyStorage implements GenericStorage {
 
 	private function iterate(MysqliConnection $dbi, Node $baseQuery){
 		$it = $dbi->query($baseQuery);
-		foreach($it as $rec){
-			yield $rec['$id'] => $rec;
+		try{
+			foreach($it as $rec){
+				yield $rec['$id'] => $rec;
+			}
+		}finally{
+			$it->free();
 		}
 	}
 
@@ -488,11 +492,15 @@ class MyStorage implements GenericStorage {
 				$baseQuery,
 				$dbi->build($this->batchSuffix, $last_seq_id, $batch_size),
 			]));
-			foreach($list as $rec){
-				$found++;
-				$loaded++;
-				$last_seq_id = $rec['$seq_id'];
-				yield $rec['$id'] => $rec;
+			try{
+				foreach($list as $rec){
+					$found++;
+					$loaded++;
+					$last_seq_id = $rec['$seq_id'];
+					yield $rec['$id'] => $rec;
+				}
+			}finally{
+				$list->free();
 			}
 		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
@@ -513,11 +521,15 @@ class MyStorage implements GenericStorage {
 				$baseQuery,
 				$dbi->build($this->batchSuffixDesc, $last_seq_id, $batch_size),
 			]));
-			foreach($list as $rec){
-				$found++;
-				$loaded++;
-				$last_seq_id = $rec['$seq_id'];
-				yield $rec['$id'] => $rec;
+			try{
+				foreach($list as $rec){
+					$found++;
+					$loaded++;
+					$last_seq_id = $rec['$seq_id'];
+					yield $rec['$id'] => $rec;
+				}
+			}finally{
+				$list->free();
 			}
 		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
@@ -541,10 +553,14 @@ class MyStorage implements GenericStorage {
 				$baseQuery,
 				$dbi->build($q1, $loaded, $batch_size),
 			]));
-			foreach($list as $rec){
-				$found++;
-				$loaded++;
-				yield $rec['$id'] => $rec;
+			try{
+				foreach($list as $rec){
+					$found++;
+					$loaded++;
+					yield $rec['$id'] => $rec;
+				}
+			}finally{
+				$list->free();
 			}
 		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
