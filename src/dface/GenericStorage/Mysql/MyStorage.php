@@ -576,10 +576,10 @@ class MyStorage implements GenericStorage {
 		$tmp = $this->temporary ? 'TEMPORARY' : '';
 		$this->dbi->query("CREATE $tmp TABLE {i} (
 			`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-			`\$id` BINARY(16) NOT NULL UNIQUE,
+			`\$id` BINARY(16) NOT NULL,
 			`\$data` TEXT,
 			`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			INDEX(`\$store_time`) 
+			UNIQUE (`\$id`) USING HASH
 			$add_columns
 			$add_indexes
 		) ENGINE=InnoDB", $this->tableName);
