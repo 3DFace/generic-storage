@@ -98,11 +98,13 @@ class MyStorage implements GenericStorage {
 				/** @noinspection SqlResolve */
 				$q1 = $this->dbi->prepare('SELECT $data FROM {i} WHERE `$id`=UNHEX({s})');
 			}
-			$rec = $this->dbi->select($q1, $this->tableName, (string)$id)->getRecord();
-			if($rec === null){
-				return null;
-			}
-			return $this->deserialize($rec);
+			/** @var \Traversable $it1 */
+			$it1 = $this->dbi->query($q1, $this->tableName, (string)$id);
+			/** @noinspection LoopWhichDoesNotLoopInspection */
+			foreach($it1 as $rec){
+				return $this->deserialize($rec);
+			};
+			return null;
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
 		}
