@@ -47,6 +47,23 @@ abstract class GenericStorageTest extends TestCase {
 		$this->assertNull($must_be_null);
 	}
 
+	public function testRemovedByCriteria() : void {
+		$s = $this->storage;
+		$uid1 = new TestId();
+		$uid2 = new TestId();
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'user1@test.php');
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'user2@test.php');
+		$s->saveItem($uid1, $entity1);
+		$s->saveItem($uid2, $entity2);
+
+		$s->removeByCriteria(new Equals(new Reference('email'), new StringConstant('user1@test.php')));
+
+		$loaded_arr = iterator_to_array($s->listAll());
+		$this->assertEquals([
+			(string)$uid2 => $entity2,
+		], $loaded_arr);
+	}
+
 	public function testOverwrite() : void {
 		$s = $this->storage;
 		$uid = new TestId();

@@ -57,6 +57,16 @@ class MemoryStorage implements GenericStorage {
 		unset($this->storage[$k]);
 	}
 
+	public function removeByCriteria(Criteria $criteria) : void {
+		$fn = $this->criteriaBuilder->build($criteria);
+		foreach($this->storage as $k=>$item){
+			$arr = $item->jsonSerialize();
+			if($fn($arr)){
+				unset($this->storage[$k]);
+			}
+		}
+	}
+
 	public function listAll(array $orderDef = [], int $limit = 0) : \traversable {
 		$values = $this->storage;
 		if($orderDef){

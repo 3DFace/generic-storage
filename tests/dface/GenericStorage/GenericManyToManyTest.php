@@ -3,7 +3,6 @@
 
 namespace dface\GenericStorage;
 
-use dface\GenericStorage\Memory\MemoryManyToMany;
 use dface\GenericStorage\Generic\GenericManyToMany;
 use PHPUnit\Framework\TestCase;
 

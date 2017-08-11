@@ -103,7 +103,7 @@ class MyStorage implements GenericStorage {
 			/** @noinspection LoopWhichDoesNotLoopInspection */
 			foreach($it1 as $rec){
 				return $this->deserialize($rec);
-			};
+			}
 			return null;
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
@@ -192,6 +192,18 @@ class MyStorage implements GenericStorage {
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
 		}
+	}
+
+	public function removeByCriteria(Criteria $criteria) : void {
+		static $q;
+		if($q === null){
+			/** @noinspection SqlResolve */
+			$q = $this->dbi->prepare('DELETE FROM {i:1}');
+		}
+		$this->dbi->query(new CompositeNode([
+			$this->dbi->build($q, $this->tableName),
+			new PlainNode(0, ' WHERE '.$this->makeWhere($criteria))
+		]));
 	}
 
 	/**

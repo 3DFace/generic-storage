@@ -10,7 +10,6 @@ interface GenericStorage {
 	/**
 	 * @param $id
 	 * @return \JsonSerializable|null
-	 *
 	 * @throws GenericStorageError
 	 */
 	public function getItem($id) : ?\JsonSerializable;
@@ -18,7 +17,6 @@ interface GenericStorage {
 	/**
 	 * @param array|\traversable $ids
 	 * @return \JsonSerializable[]|\traversable
-	 *
 	 * @throws GenericStorageError
 	 */
 	public function getItems($ids) : \traversable;
@@ -26,17 +24,21 @@ interface GenericStorage {
 	/**
 	 * @param $id
 	 * @param \JsonSerializable $item
-	 *
 	 * @throws GenericStorageError
 	 */
 	public function saveItem($id, \JsonSerializable $item) : void;
 
 	/**
 	 * @param $id
-	 *
 	 * @throws GenericStorageError
 	 */
 	public function removeItem($id) : void;
+
+	/**
+	 * @param Criteria $criteria
+	 * @throws GenericStorageError
+	 */
+	public function removeByCriteria(Criteria $criteria) : void;
 
 	/**
 	 * @param array[] $orderDef - list of pairs [`property`(string), `direction`(bool)]

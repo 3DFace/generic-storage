@@ -3,7 +3,6 @@
 
 namespace dface\GenericStorage;
 
-use dface\GenericStorage\Generic\GenericStorage;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
 
 class MyGenericStorageBatched10Test extends GenericStorageTest {
