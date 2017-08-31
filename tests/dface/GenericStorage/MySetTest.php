@@ -30,24 +30,28 @@ class MySetTest extends GenericSetTest {
 	public function testIterateTroubles(){
 		$this->broke();
 		$this->expectException(MyStorageError::class);
+		$this->expectExceptionCode(0);
 		iterator_to_array($this->set->iterate());
 	}
 
 	public function testContainsTroubles(){
 		$this->broke();
 		$this->expectException(MyStorageError::class);
+		$this->expectExceptionCode(0);
 		$this->set->contains(new TestId());
 	}
 
 	public function testAddTroubles(){
 		$this->broke();
 		$this->expectException(MyStorageError::class);
+		$this->expectExceptionCode(0);
 		$this->set->add(new TestId());
 	}
 
 	public function testRemoveTroubles(){
 		$this->broke();
 		$this->expectException(MyStorageError::class);
+		$this->expectExceptionCode(0);
 		$this->set->remove(new TestId());
 	}
 

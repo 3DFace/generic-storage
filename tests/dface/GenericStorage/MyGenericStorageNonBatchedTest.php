@@ -38,36 +38,42 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 	public function testListAllTroubles(){
 		$this->broke();
 		$this->expectException(MyStorageError::class);
+		$this->expectExceptionCode(0);
 		iterator_to_array($this->storage->listAll());
 	}
 
 	public function testListByCriteriaTroubles(){
 		$this->broke();
 		$this->expectException(MyStorageError::class);
+		$this->expectExceptionCode(0);
 		iterator_to_array($this->storage->listByCriteria(new IsNull(new Reference('x'))));
 	}
 
 	public function testGetItemsTroubles(){
 		$this->broke();
 		$this->expectException(MyStorageError::class);
+		$this->expectExceptionCode(0);
 		iterator_to_array($this->storage->getItems([new TestId()]));
 	}
 
 	public function testGetItemTroubles(){
 		$this->broke();
 		$this->expectException(MyStorageError::class);
+		$this->expectExceptionCode(0);
 		$this->storage->getItem(new TestId());
 	}
 
 	public function testSaveItemTroubles(){
 		$this->broke();
 		$this->expectException(MyStorageError::class);
+		$this->expectExceptionCode(0);
 		$this->storage->saveItem($id = new TestId(), new TestEntity($id, 'name', 'none'));
 	}
 
 	public function testRemoveItemTroubles(){
 		$this->broke();
 		$this->expectException(MyStorageError::class);
+		$this->expectExceptionCode(0);
 		$this->storage->removeItem(new TestId());
 	}
 

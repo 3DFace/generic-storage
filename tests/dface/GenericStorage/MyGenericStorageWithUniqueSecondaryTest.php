@@ -66,6 +66,7 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 		$data = new TestData(str_repeat('x', 65535), 10);
 		$entity1 = new TestEntity($uid1, 'Test User', 'user@test.php', $data);
 		$this->expectException(MyStorageError::class);
+		$this->expectExceptionCode(0);
 		$s->saveItem($uid1, $entity1);
 	}
 

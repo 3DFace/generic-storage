@@ -124,13 +124,13 @@ class MyStorage implements GenericStorage {
 			}
 			$sub_list = [];
 			foreach($ids as $id){
-				$sub_list[] = $this->dbi->build($q1, $id);
 				if(count($sub_list) === $this->idBatchSize){
 					$where = new PlainNode(0, ' WHERE `$id` IN ('.implode(',', $sub_list).')');
 					$node = new CompositeNode([$this->selectAllFromTable, $where]);
 					yield from $this->iterateOverDecoded($node, [], 0);
 					$sub_list = [];
 				}
+				$sub_list[] = $this->dbi->build($q1, $id);
 			}
 			if($sub_list){
 				$where = new PlainNode(0, ' WHERE `$id` IN ('.implode(',', $sub_list).')');
