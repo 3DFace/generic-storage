@@ -14,11 +14,16 @@
 		"dface/mysql": "dev-master"
 	},
 	"require-dev": {
-		"phpunit/phpunit": "^6.0"
+		"phpunit/phpunit": "^6.4"
 	},
 	"autoload": {
 		"psr-0": {
-			"": ["src/", "tests/"]
+			"dface\\GenericStorage\\": "src/"
+		}
+	},
+	"autoload-dev": {
+		"psr-0": {
+			"dface\\GenericStorage\\": "tests/"
 		}
 	}
 }
