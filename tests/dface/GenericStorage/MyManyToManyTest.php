@@ -6,6 +6,8 @@ namespace dface\GenericStorage;
 use dface\GenericStorage\Mysql\MyManyToMany;
 use dface\GenericStorage\Mysql\MyStorageError;
 use dface\Mysql\MysqliConnection;
+use dface\sql\placeholders\DefaultFormatter;
+use dface\sql\placeholders\DefaultParser;
 
 class MyManyToManyTest extends GenericManyToManyTest {
 
@@ -13,9 +15,10 @@ class MyManyToManyTest extends GenericManyToManyTest {
 	private $dbi;
 
 	protected function setUp() : void {
-		$this->dbi = DbiFactory::getConnection();
+		$link = DbiFactory::getConnection();
+		$this->dbi = new MysqliConnection($link, new DefaultParser(), new DefaultFormatter());
 		$this->assoc = new MyManyToMany(
-			$this->dbi,
+			$link,
 			'test_many_to_many',
 			TestId::class,
 			TestId::class,

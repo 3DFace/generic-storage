@@ -4,13 +4,10 @@
 namespace dface\GenericStorage;
 
 use dface\Mysql\MysqlException;
-use dface\Mysql\MysqliConnection;
-use dface\sql\placeholders\DefaultFormatter;
-use dface\sql\placeholders\DefaultParser;
 
 class DbiFactory {
 
-	public static function getConnection() : MysqliConnection {
+	public static function getConnection() : \mysqli {
 		static $dbi;
 		if($dbi === null){
 			$fac = self::getConnectionFactory();
@@ -30,9 +27,7 @@ class DbiFactory {
 					throw new MysqlException(mysqli_connect_error());
 				}
 				$link->set_charset(DB_CHARSET);
-				$parser = new DefaultParser();
-				$formatter = new DefaultFormatter();
-				return new MysqliConnection($link, $parser, $formatter);
+				return $link;
 			};
 		}
 		return $fac;

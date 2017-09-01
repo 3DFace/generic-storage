@@ -9,9 +9,9 @@ use dface\GenericStorage\Generic\GenericStorage;
 use dface\Mysql\DuplicateEntryException;
 use dface\Mysql\MysqlException;
 use dface\Mysql\MysqliConnection;
-use dface\sql\placeholders\CompositeNode;
+use dface\sql\placeholders\DefaultFormatter;
+use dface\sql\placeholders\DefaultParser;
 use dface\sql\placeholders\FormatterException;
-use dface\sql\placeholders\Node;
 use dface\sql\placeholders\ParserException;
 use dface\sql\placeholders\PlainNode;
 
@@ -21,38 +21,38 @@ class MyStorage implements GenericStorage {
 	private $className;
 	/** @var MysqliConnection */
 	private $dbi;
+	/** @var \mysqli */
+	private $link;
 	/** @var string */
-	private $tableName;
+	private $tableNameEscaped;
 	/** @var string */
 	private $idPropertyName;
 	/** @var string[] */
 	private $add_columns;
 	/** @var string[] */
+	private $add_columns_data;
+	/** @var string[] */
 	private $add_indexes;
 	/** @var bool */
 	private $has_unique_secondary;
 	/** @var callable */
-	private $dedicatedConnectionFactory;
+	private $dedicatedLinkFactory;
 	/** @var bool */
 	private $temporary;
 	/** @var SqlCriteriaBuilder */
 	private $criteriaBuilder;
-	/** @var PlainNode */
+	/** @var string */
 	private $selectAllFromTable;
 	/** @var int */
 	private $batchListSize;
 	/** @var int */
 	private $idBatchSize;
-	/** @var PlainNode */
-	private $batchSuffix;
-	/** @var PlainNode */
-	private $batchSuffixDesc;
 
 	public function __construct(
 		string $className,
-		MysqliConnection $dbi,
+		\mysqli $link,
 		string $tableName,
-		$dedicatedConnectionFactory,
+		$dedicatedLinkFactory,
 		string $idPropertyName = null,
 		array $add_columns = [],
 		array $add_indexes = [],
@@ -62,23 +62,29 @@ class MyStorage implements GenericStorage {
 		int $id_batch_size = 500
 	) {
 		$this->className = $className;
-		$this->dbi = $dbi;
-		$this->tableName = $tableName;
+		$this->dbi = new MysqliConnection($link, new DefaultParser(), new DefaultFormatter());
+		$this->link = $link;
+		$this->tableNameEscaped = str_replace('`', '``', $tableName);
 		$this->idPropertyName = $idPropertyName;
 		$this->add_columns = $add_columns;
+		$this->add_columns_data = [];
+		foreach($this->add_columns as $i => $x){
+			$this->add_columns_data[$i] = [
+				'escaped' => str_replace('`', '``', $i),
+				'path' => explode('/', $i),
+			];
+		}
 		$this->add_indexes = $add_indexes;
-		$this->dedicatedConnectionFactory = $temporary ? null : $dedicatedConnectionFactory;
+		$this->dedicatedLinkFactory = $temporary ? null : $dedicatedLinkFactory;
 		$this->temporary = $temporary;
 		$this->has_unique_secondary = $has_unique_secondary;
 		$this->criteriaBuilder = new SqlCriteriaBuilder();
 		/** @noinspection SqlResolve */
-		$this->selectAllFromTable = $this->dbi->build('SELECT $seq_id, LOWER(HEX($id)) as $id, $data FROM {i}', $this->tableName);
+		$this->selectAllFromTable = "SELECT `\$seq_id`, LOWER(HEX(`\$id`)) as `\$id`, `\$data` FROM `$this->tableNameEscaped`";
 		if($batch_list_size < 0){
 			throw new \InvalidArgumentException("Batch list size must be >=0, $batch_list_size given");
 		}
 		$this->batchListSize = $batch_list_size;
-		$this->batchSuffix = $this->dbi->prepare(' AND $seq_id > {d} ORDER BY $seq_id LIMIT {d}');
-		$this->batchSuffixDesc = $this->dbi->prepare(' AND $seq_id < {d} ORDER BY $seq_id DESC LIMIT {d}');
 		if($id_batch_size < 1){
 			throw new \InvalidArgumentException("Id batch size must be >0, $id_batch_size given");
 		}
@@ -92,14 +98,11 @@ class MyStorage implements GenericStorage {
 	 * @throws MyStorageError
 	 */
 	public function getItem($id) : ?\JsonSerializable {
-		static $q1;
 		try{
-			if($q1 === null){
-				/** @noinspection SqlResolve */
-				$q1 = $this->dbi->prepare('SELECT $data FROM {i} WHERE `$id`=UNHEX({s})');
-			}
+			$e_id = $this->link->real_escape_string($id);
 			/** @var \Traversable $it1 */
-			$it1 = $this->dbi->query($q1, $this->tableName, (string)$id);
+			/** @noinspection SqlResolve */
+			$it1 = $this->dbi->query(new PlainNode(0, "SELECT `\$data` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')"));
 			/** @noinspection LoopWhichDoesNotLoopInspection */
 			foreach($it1 as $rec){
 				return $this->deserialize($rec);
@@ -117,24 +120,21 @@ class MyStorage implements GenericStorage {
 	 * @throws MyStorageError
 	 */
 	public function getItems($ids) : \traversable {
-		static $q1;
 		try{
-			if($q1 === null){
-				$q1 = $this->dbi->prepare('UNHEX({s})');
-			}
 			$sub_list = [];
 			foreach($ids as $id){
 				if(count($sub_list) === $this->idBatchSize){
-					$where = new PlainNode(0, ' WHERE `$id` IN ('.implode(',', $sub_list).')');
-					$node = new CompositeNode([$this->selectAllFromTable, $where]);
+					$where = ' WHERE `$id` IN ('.implode(',', $sub_list).')';
+					$node = "$this->selectAllFromTable $where";
 					yield from $this->iterateOverDecoded($node, [], 0);
 					$sub_list = [];
 				}
-				$sub_list[] = $this->dbi->build($q1, $id);
+				$e_id = $this->link->real_escape_string($id);
+				$sub_list[] =  "UNHEX('$e_id')";
 			}
 			if($sub_list){
-				$where = new PlainNode(0, ' WHERE `$id` IN ('.implode(',', $sub_list).')');
-				$node = new CompositeNode([$this->selectAllFromTable, $where]);
+				$where = ' WHERE `$id` IN ('.implode(',', $sub_list).')';
+				$node = "$this->selectAllFromTable $where";
 				yield from $this->iterateOverDecoded($node, [], 0);
 			}
 		}catch(MysqlException|FormatterException|ParserException $e){
@@ -154,8 +154,8 @@ class MyStorage implements GenericStorage {
 		}
 		try{
 			$arr = $item->jsonSerialize();
-			$add_column_set_str = $this->createUpdateColumnsFragment($arr);
-			$add_column_set_node = new PlainNode(0, $add_column_set_str ? (', '.$add_column_set_str) : '');
+			$add_column_set_node = $this->createUpdateColumnsFragment($arr);
+			$add_column_set_node = $add_column_set_node ? (', '.$add_column_set_node) : '';
 			$data = $this->serialize($id, $arr);
 			if($this->has_unique_secondary){
 				try{
@@ -195,50 +195,36 @@ class MyStorage implements GenericStorage {
 	}
 
 	public function removeByCriteria(Criteria $criteria) : void {
-		static $q;
-		if($q === null){
-			/** @noinspection SqlResolve */
-			$q = $this->dbi->prepare('DELETE FROM {i:1}');
-		}
-		$this->dbi->query(new CompositeNode([
-			$this->dbi->build($q, $this->tableName),
-			new PlainNode(0, ' WHERE '.$this->makeWhere($criteria))
-		]));
+		/** @noinspection SqlResolve */
+		$this->dbi->query(new PlainNode(0, "DELETE FROM `$this->tableNameEscaped` WHERE ".$this->makeWhere($criteria)));
 	}
 
 	/**
 	 * @param string $id
 	 * @param string $data
-	 * @param Node $add_column_set_node
+	 * @param string $add_column_set_node
 	 *
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
-	private function insert(string $id, string $data, Node $add_column_set_node) : void {
-		static $q;
-		if($q === null){
-			/** @noinspection SqlResolve */
-			$q = $this->dbi->prepare('INSERT INTO {i:1} SET `$id`=UNHEX({s:2}), `$data`={s:3} ');
-		}
-		$node = new CompositeNode([$q, $add_column_set_node]);
-		$this->dbi->update($node, $this->tableName, $id, $data);
+	private function insert(string $id, string $data, string $add_column_set_node) : void {
+		$e_id = $this->link->real_escape_string($id);
+		$e_data = $this->link->real_escape_string($data);
+		/** @noinspection SqlResolve */
+		$this->dbi->update(new PlainNode(0, "INSERT INTO `$this->tableNameEscaped` SET `\$id`=UNHEX('$e_id'), `\$data`='$e_data' $add_column_set_node"));
 	}
 
 	/**
 	 * @param string $id
 	 * @param string $data
-	 * @param Node $add_column_set_node
+	 * @param string $add_column_set_node
 	 *
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
-	private function update(string $id, string $data, Node $add_column_set_node) : void {
-		static $q1, $q2;
-		if($q1 === null){
-			/** @noinspection SqlResolve */
-			$q1 = $this->dbi->prepare('UPDATE {i:1} SET `$data`={s:3} ');
-			$q2 = $this->dbi->prepare(' WHERE `$id`=UNHEX({s:2})');
-		}
-		$node = new CompositeNode([$q1, $add_column_set_node, $q2]);
-		$this->dbi->update($node, $this->tableName, $id, $data);
+	private function update(string $id, string $data, string $add_column_set_node) : void {
+		$e_id = $this->link->real_escape_string($id);
+		$e_data = $this->link->real_escape_string($data);
+		/** @noinspection SqlResolve */
+		$this->dbi->update(new PlainNode(0, "UPDATE `$this->tableNameEscaped` SET `\$data`='$e_data' $add_column_set_node WHERE `\$id`=UNHEX('$e_id')"));
 	}
 
 	/**
@@ -247,30 +233,25 @@ class MyStorage implements GenericStorage {
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
 	private function delete(string $id) : void {
-		static $q1;
-		if($q1 === null){
-			/** @noinspection SqlResolve */
-			$q1 = $this->dbi->prepare('DELETE FROM {i:1} WHERE `$id`=UNHEX({s:2})');
-		}
-		$this->dbi->update($q1, $this->tableName, $id);
+		$e_id = $this->link->real_escape_string($id);
+		/** @noinspection SqlResolve */
+		$this->dbi->update(new PlainNode(0, "DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')"));
 	}
 
 	/**
 	 * @param string $id
 	 * @param string $data
-	 * @param Node $add_column_set_str
+	 * @param string $add_column_set_str
 	 *
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
-	private function insertOnDupUpdate(string $id, ?string $data, Node $add_column_set_str) : void {
-		static $q1, $q2;
-		if($q1 === null){
-			/** @noinspection SqlResolve */
-			$q1 = $this->dbi->prepare('INSERT INTO {i:1} SET `$id`=UNHEX({s:2}), `$data`={s:3} ');
-			$q2 = $this->dbi->prepare(' ON DUPLICATE KEY UPDATE `$data`={s:3} ');
-		}
-		$node = new CompositeNode([$q1, $add_column_set_str, $q2, $add_column_set_str]);
-		$this->dbi->update($node, $this->tableName, $id, $data);
+	private function insertOnDupUpdate(string $id, ?string $data, string $add_column_set_str) : void {
+		$e_id = $this->link->real_escape_string($id);
+		$e_data = $this->link->real_escape_string($data);
+		/** @noinspection SqlResolve */
+		$q1 = new PlainNode(0, "INSERT INTO `$this->tableNameEscaped` SET `\$id`=UNHEX('$e_id'), `\$data`='$e_data' $add_column_set_str \n".
+			"ON DUPLICATE KEY UPDATE `\$data`='$e_data' $add_column_set_str");
+		$this->dbi->update($q1);
 	}
 
 	/**
@@ -280,27 +261,24 @@ class MyStorage implements GenericStorage {
 	 * @throws FormatterException|ParserException
 	 */
 	private function createUpdateColumnsFragment($arr) : string {
-		static $q1;
-		if($q1 === null){
-			$q1 = $this->dbi->prepare('{i}={s}');
-		}
 		$add_column_set_str = [];
 		foreach($this->add_columns as $i => $x){
 			$default = $x['default'] ?? null;
-			$v = $this->extractIndexValue($arr, $i, $default);
-			$add_column_set_str[] = (string)$this->dbi->build($q1, $i, $v);
+			$v = $this->extractIndexValue($arr, $this->add_columns_data[$i]['path'], $default);
+			$e_col = '`'.$this->add_columns_data[$i]['escaped'].'`';
+			$e_val = $v === null ? 'null' : "'".$this->link->real_escape_string($v)."'";
+			$add_column_set_str[] = "$e_col=$e_val";
 		}
 		return implode(', ', $add_column_set_str);
 	}
 
 	/**
 	 * @param $arr
-	 * @param $index_name
+	 * @param array $path
 	 * @param $default
 	 * @return mixed
 	 */
-	private function extractIndexValue(array $arr, string $index_name, $default) {
-		$path = explode('/', $index_name);
+	private function extractIndexValue(array $arr, array $path, $default) {
 		$x = $arr;
 		foreach($path as $p){
 			if(!isset($x[$p])){
@@ -318,12 +296,9 @@ class MyStorage implements GenericStorage {
 	 * @throws MyStorageError
 	 */
 	public function listAll(array $orderDef = [], int $limit = 0) : \traversable {
-		static $q1;
-		if($q1 === null){
-			$q1 = new PlainNode(0, ' WHERE 1 ');
-		}
 		try{
-			yield from $this->iterateOverDecoded(new CompositeNode([$this->selectAllFromTable, $q1]), $orderDef, $limit);
+			$all = "$this->selectAllFromTable WHERE 1";
+			yield from $this->iterateOverDecoded($all, $orderDef, $limit);
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
 		}
@@ -338,8 +313,8 @@ class MyStorage implements GenericStorage {
 	 */
 	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : \traversable {
 		try{
-			$where = new PlainNode(0, ' WHERE '.$this->makeWhere($criteria));
-			yield from $this->iterateOverDecoded(new CompositeNode([$this->selectAllFromTable, $where]), $orderDef, $limit);
+			$q = "$this->selectAllFromTable WHERE ".$this->makeWhere($criteria);
+			yield from $this->iterateOverDecoded($q, $orderDef, $limit);
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
 		}
@@ -347,11 +322,11 @@ class MyStorage implements GenericStorage {
 
 	/**
 	 * @param Criteria $criteria
-	 * @return PlainNode
+	 * @return string
 	 *
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
-	private function makeWhere(Criteria $criteria) : PlainNode {
+	private function makeWhere(Criteria $criteria) : string {
 		[$sql, $args] = $this->criteriaBuilder->build($criteria, function ($property) {
 			return $property === $this->idPropertyName ? ['HEX({i})', ['$id']] : ['{i}', [$property]];
 		});
@@ -360,27 +335,26 @@ class MyStorage implements GenericStorage {
 
 	public function updateColumns() : void {
 		if($this->add_columns){
-			$all = new PlainNode(0, ' WHERE 1 ');
-			$it = $this->iterateOver(new CompositeNode([$this->selectAllFromTable, $all]), [], 0);
+			$it = $this->iterateOver("$this->selectAllFromTable WHERE 1 ", [], 0);
 			foreach($it as $rec){
 				$arr = json_decode($rec['$data'], true);
 				// TODO: don't update if columns contain correct values
 				$add_column_set_str = $this->createUpdateColumnsFragment($arr);
+				$e_id = $this->link->real_escape_string($rec['$seq_id']);
 				/** @noinspection SqlResolve */
-				$this->dbi->update("UPDATE {i} SET $add_column_set_str WHERE `\$seq_id`={s}",
-					$this->tableName, $rec['$seq_id']);
+				$this->dbi->update(new PlainNode(0, "UPDATE `$this->tableNameEscaped` SET $add_column_set_str WHERE `\$seq_id`='$e_id'"));
 			}
 		}
 	}
 
 	/**
-	 * @param Node $q
+	 * @param string $q
 	 * @param int $limit
 	 * @param $orderDef
 	 * @return \Generator|null
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
-	private function iterateOverDecoded(Node $q, array $orderDef, int $limit) : ?\Generator {
+	private function iterateOverDecoded(string $q, array $orderDef, int $limit) : ?\Generator {
 		foreach($this->iterateOver($q, $orderDef, $limit) as $k=>$rec){
 			$obj = $this->deserialize($rec);
 			yield $k=>$obj;
@@ -393,16 +367,18 @@ class MyStorage implements GenericStorage {
 	}
 
 	/**
-	 * @param Node $query
+	 * @param string $query
 	 * @param int $limit
 	 * @param array[] $orderDef
 	 * @return \Generator
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
-	private function iterateOver(Node $query, array $orderDef, int $limit) : \Generator {
-		if($this->dedicatedConnectionFactory !== null){
+	private function iterateOver(string $query, array $orderDef, int $limit) : \Generator {
+		if($this->dedicatedLinkFactory !== null){
+			/** @var \mysqli $link */
+			$link = call_user_func($this->dedicatedLinkFactory);
 			/** @var MysqliConnection $dbi */
-			$dbi = call_user_func($this->dedicatedConnectionFactory);
+			$dbi = new MysqliConnection($link, new DefaultParser(), new DefaultFormatter());
 			try{
 				yield from $this->iterateOverDbi($dbi, $query, $orderDef, $limit);
 			}finally{
@@ -413,7 +389,7 @@ class MyStorage implements GenericStorage {
 		}
 	}
 
-	private function iterateOverDbi(MysqliConnection $dbi, Node $baseQuery, array $orderDef, int $limit) : \Generator {
+	private function iterateOverDbi(MysqliConnection $dbi, string $baseQuery, array $orderDef, int $limit) : \Generator {
 		if($orderDef){
 			if(count($orderDef) === 1 && $orderDef[0][0] === $this->idPropertyName){
 				if($this->batchListSize > 0){
@@ -428,10 +404,9 @@ class MyStorage implements GenericStorage {
 						$this->buildOrderBy($orderDef)
 					];
 					if($limit){
-						$nodes[] = new PlainNode(0, ' LIMIT '.$limit);
+						$nodes[] = " LIMIT $limit";
 					}
-					$query = new CompositeNode($nodes);
-					yield from $this->iterate($dbi, $query);
+					yield from $this->iterate($dbi, implode(' ', $nodes));
 				}
 			}else{
 				$nodes = [
@@ -439,14 +414,12 @@ class MyStorage implements GenericStorage {
 					$this->buildOrderBy($orderDef),
 				];
 				if($this->batchListSize > 0){
-					$query = new CompositeNode($nodes);
-					yield from $this->iterateOverDbiBatchedByLimit($dbi, $query, $limit);
+					yield from $this->iterateOverDbiBatchedByLimit($dbi, implode(' ', $nodes), $limit);
 				}else{
 					if($limit){
-						$nodes[] = new PlainNode(0, ' LIMIT '.$limit);
+						$nodes[] = " LIMIT $limit";
 					}
-					$query = new CompositeNode($nodes);
-					yield from $this->iterate($dbi, $query);
+					yield from $this->iterate($dbi, implode(' ', $nodes));
 				}
 			}
 		}else{
@@ -454,8 +427,7 @@ class MyStorage implements GenericStorage {
 				yield from $this->iterateOverDbiBatchedBySeqId($dbi, $baseQuery, $limit);
 			}else{
 				if($limit){
-					$query = new CompositeNode([$baseQuery, new PlainNode(0, 'LIMIT '.$limit)]);
-					yield from $this->iterate($dbi, $query);
+					yield from $this->iterate($dbi, "$baseQuery LIMIT $limit");
 				}else{
 					yield from $this->iterate($dbi, $baseQuery);
 				}
@@ -463,24 +435,21 @@ class MyStorage implements GenericStorage {
 		}
 	}
 
-	private function buildOrderBy(array $orderDef) : PlainNode {
-		static $q_asc, $q_desc;
-		if($q_asc === null){
-			$q_asc = $this->dbi->prepare('{i}');
-			$q_desc = $this->dbi->prepare('{i} DESC');
-		}
+	private function buildOrderBy(array $orderDef) : string {
 		$members = [];
 		foreach($orderDef as [$property, $asc]){
 			if($property === $this->idPropertyName){
 				$property = '$id';
 			}
-			$members[] = $this->dbi->build($asc ? $q_asc : $q_desc, $property);
+			$e_col = str_replace('`', '``', $property);
+			$e_dir = $asc ? '' : ' DESC';
+			$members[] = "`$e_col`$e_dir";
 		}
-		return new PlainNode(0, ' ORDER BY '.implode(', ', $members));
+		return ' ORDER BY '.implode(', ', $members);
 	}
 
-	private function iterate(MysqliConnection $dbi, Node $baseQuery){
-		$it = $dbi->query($baseQuery);
+	private function iterate(MysqliConnection $dbi, string $baseQuery){
+		$it = $dbi->query(new PlainNode(0, $baseQuery));
 		try{
 			foreach($it as $rec){
 				yield $rec['$id'] => $rec;
@@ -490,7 +459,7 @@ class MyStorage implements GenericStorage {
 		}
 	}
 
-	private function iterateOverDbiBatchedBySeqId(MysqliConnection $dbi, Node $baseQuery, int $limit) : \Generator {
+	private function iterateOverDbiBatchedBySeqId(MysqliConnection $dbi, string $baseQuery, int $limit) : \Generator {
 		$last_seq_id = 0;
 		$loaded = 0;
 		do{
@@ -502,10 +471,7 @@ class MyStorage implements GenericStorage {
 					$batch_size -= $to - $limit;
 				}
 			}
-			$list = $dbi->query(new CompositeNode([
-				$baseQuery,
-				$dbi->build($this->batchSuffix, $last_seq_id, $batch_size),
-			]));
+			$list = $dbi->query(new PlainNode(0, "$baseQuery  AND `\$seq_id` > $last_seq_id ORDER BY `\$seq_id` LIMIT $batch_size"));
 			try{
 				foreach($list as $rec){
 					$found++;
@@ -519,7 +485,7 @@ class MyStorage implements GenericStorage {
 		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
 
-	private function iterateOverDbiBatchedBySeqIdDesc(MysqliConnection $dbi, Node $baseQuery, int $limit) : \Generator {
+	private function iterateOverDbiBatchedBySeqIdDesc(MysqliConnection $dbi, string $baseQuery, int $limit) : \Generator {
 		$last_seq_id = PHP_INT_MAX;
 		$loaded = 0;
 		do{
@@ -531,10 +497,7 @@ class MyStorage implements GenericStorage {
 					$batch_size -= $to - $limit;
 				}
 			}
-			$list = $dbi->query(new CompositeNode([
-				$baseQuery,
-				$dbi->build($this->batchSuffixDesc, $last_seq_id, $batch_size),
-			]));
+			$list = $dbi->query(new PlainNode(0, "$baseQuery  AND `\$seq_id` < $last_seq_id ORDER BY `\$seq_id` DESC LIMIT $batch_size"));
 			try{
 				foreach($list as $rec){
 					$found++;
@@ -548,11 +511,7 @@ class MyStorage implements GenericStorage {
 		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
 
-	private function iterateOverDbiBatchedByLimit(MysqliConnection $dbi, Node $baseQuery, int $limit) : \Generator {
-		static $q1;
-		if($q1 === null){
-			$q1 = $dbi->prepare(' LIMIT {d}, {d}');
-		}
+	private function iterateOverDbiBatchedByLimit(MysqliConnection $dbi, string $baseQuery, int $limit) : \Generator {
 		$loaded = 0;
 		do{
 			$found = 0;
@@ -563,10 +522,7 @@ class MyStorage implements GenericStorage {
 					$batch_size -= $to - $limit;
 				}
 			}
-			$list = $dbi->query(new CompositeNode([
-				$baseQuery,
-				$dbi->build($q1, $loaded, $batch_size),
-			]));
+			$list = $dbi->query(new PlainNode(0, "$baseQuery LIMIT $loaded, $batch_size"));
 			try{
 				foreach($list as $rec){
 					$found++;
@@ -586,9 +542,9 @@ class MyStorage implements GenericStorage {
 		}, $this->add_columns, array_keys($this->add_columns));
 		$add_columns = $add_columns ? ','.implode("\n\t\t\t,", $add_columns) : '';
 		$add_indexes = $this->add_indexes ? ','.implode("\n\t\t\t,", $this->add_indexes) : '';
-		$this->dbi->query('DROP TABLE IF EXISTS {i}', $this->tableName);
+		$this->dbi->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
 		$tmp = $this->temporary ? 'TEMPORARY' : '';
-		$this->dbi->query("CREATE $tmp TABLE {i} (
+		$this->dbi->query("CREATE $tmp TABLE `$this->tableNameEscaped` (
 			`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			`\$id` BINARY(16) NOT NULL,
 			`\$data` TEXT,
@@ -596,7 +552,7 @@ class MyStorage implements GenericStorage {
 			UNIQUE (`\$id`) USING HASH
 			$add_columns
 			$add_indexes
-		) ENGINE=InnoDB", $this->tableName);
+		) ENGINE=InnoDB");
 	}
 
 }

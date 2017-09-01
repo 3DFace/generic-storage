@@ -6,15 +6,22 @@ namespace dface\GenericStorage\Mysql;
 use dface\GenericStorage\Generic\GenericManyToMany;
 use dface\Mysql\MysqlException;
 use dface\Mysql\MysqliConnection;
+use dface\sql\placeholders\DefaultFormatter;
+use dface\sql\placeholders\DefaultParser;
 use dface\sql\placeholders\FormatterException;
 use dface\sql\placeholders\ParserException;
+use dface\sql\placeholders\PlainNode;
 
 class MyManyToMany implements GenericManyToMany {
 
+	/** @var \mysqli */
+	private $link;
 	/** @var MysqliConnection */
 	private $dbi;
 	/** @var string */
 	private $tableName;
+	/** @var string */
+	private $tableNameEscaped;
 	/** @var string */
 	private $leftClassName;
 	/** @var string */
@@ -27,7 +34,7 @@ class MyManyToMany implements GenericManyToMany {
 	private $temporary;
 
 	public function __construct(
-		MysqliConnection $dbi,
+		\mysqli $link,
 		string $tableName,
 		string $leftClassName,
 		string $rightClassName,
@@ -35,8 +42,10 @@ class MyManyToMany implements GenericManyToMany {
 		string $rightColumnName = 'right',
 		bool $temporary = false
 	) {
-		$this->dbi = $dbi;
+		$this->link = $link;
+		$this->dbi = new MysqliConnection($link, new DefaultParser(), new DefaultFormatter());
 		$this->tableName = $tableName;
+		$this->tableNameEscaped = str_replace('`', '``', $tableName);
 		$this->leftClassName = $leftClassName;
 		$this->rightClassName = $rightClassName;
 		$this->leftColumnName = $leftColumnName;
@@ -86,15 +95,12 @@ class MyManyToMany implements GenericManyToMany {
 		string $byColumn,
 		string $byValue
 	) : \Generator {
-		static $q1;
-		if($q1 === null){
-			$q1 = $this->dbi->prepare('SELECT HEX({i:2}) {i:2} FROM {i:1} WHERE {i:3}=UNHEX({s:4})');
-		}
-		$it = $this->dbi->select($q1,
-			$this->tableName,
-			$dataColumn,
-			$byColumn,
-			$byValue);
+		$e_data_col = str_replace('`', '``', $dataColumn);
+		$e_by_col = str_replace('`', '``', $byColumn);
+		$e_by_val = $this->link->real_escape_string($byValue);
+		/** @noinspection SqlResolve */
+		$q1 = new PlainNode(0, "SELECT HEX(`$e_data_col`) `$e_data_col` FROM `$this->tableNameEscaped` WHERE `$e_by_col`=UNHEX('$e_by_val')");
+		$it = $this->dbi->select($q1);
 		foreach($it as $rec){
 			/** @noinspection PhpUndefinedMethodInspection */
 			$x = $dataClassName::deserialize($rec[$dataColumn]);
@@ -109,17 +115,14 @@ class MyManyToMany implements GenericManyToMany {
 	 * @throws MyStorageError
 	 */
 	public function add($left, $right) : void {
-		static $q1;
 		try{
-			if($q1 === null){
-				$q1 = $this->dbi->prepare('INSERT IGNORE INTO {i} ({i}, {i}) VALUES (UNHEX({s}), UNHEX({s}))');
-			}
-			$this->dbi->update($q1,
-				$this->tableName,
-				$this->leftColumnName,
-				$this->rightColumnName,
-				(string)$left,
-				(string)$right);
+			$e_left_col = str_replace('`', '``', $this->leftColumnName);
+			$e_right_col = str_replace('`', '``', $this->rightColumnName);
+			$e_left_val = $this->link->real_escape_string($left);
+			$e_right_val = $this->link->real_escape_string($right);
+			/** @noinspection SqlResolve */
+			$q1 = new PlainNode(0, "INSERT IGNORE INTO `$this->tableNameEscaped` (`$e_left_col`, `$e_right_col`) VALUES (UNHEX('$e_left_val'), UNHEX('$e_right_val'))");
+			$this->dbi->update($q1);
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
 		}
@@ -132,17 +135,14 @@ class MyManyToMany implements GenericManyToMany {
 	 * @throws MyStorageError
 	 */
 	public function remove($left, $right) : void {
-		static $q1;
 		try{
-			if($q1 === null){
-				$q1 = $this->dbi->prepare('DELETE FROM {i} WHERE {i}=UNHEX({s}) AND {i}=UNHEX({s})');
-			}
-			$this->dbi->update($q1,
-				$this->tableName,
-				$this->leftColumnName,
-				(string)$left,
-				$this->rightColumnName,
-				(string)$right);
+			$e_left_col = str_replace('`', '``', $this->leftColumnName);
+			$e_right_col = str_replace('`', '``', $this->rightColumnName);
+			$e_left_val = $this->link->real_escape_string($left);
+			$e_right_val = $this->link->real_escape_string($right);
+			/** @noinspection SqlResolve */
+			$q1 = new PlainNode(0, "DELETE FROM `$this->tableNameEscaped` WHERE `$e_left_col`=UNHEX('$e_left_val') AND `$e_right_col`=UNHEX('$e_right_val')");
+			$this->dbi->update($q1);
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
 		}
@@ -181,11 +181,11 @@ class MyManyToMany implements GenericManyToMany {
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
 	private function clearByColumn(string $column, string $value) : void {
-		static $q1;
-		if($q1 === null){
-			$q1 = $this->dbi->prepare('DELETE FROM {i} WHERE {i}=UNHEX({s})');
-		}
-		$this->dbi->update($q1, $this->tableName, $column, $value);
+		$e_col = str_replace('`', '``', $column);
+		$e_val = $this->link->real_escape_string($value);
+		/** @noinspection SqlResolve */
+		$q1 = new PlainNode(0, "DELETE FROM `$this->tableNameEscaped` WHERE `$e_col`=UNHEX('$e_val')");
+		$this->dbi->update($q1);
 	}
 
 	public function reset() : void {

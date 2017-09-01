@@ -9,8 +9,8 @@ class MyStorageBuilder {
 
 	/** @var string */
 	private $className;
-	/** @var MysqliConnection */
-	private $dbi;
+	/** @var \mysqli */
+	private $link;
 	/** @var string */
 	private $tableName;
 
@@ -31,15 +31,9 @@ class MyStorageBuilder {
 	/** @var int */
 	private $idBatchSize = 500;
 
-	/**
-	 * MyStorageBuilder constructor.
-	 * @param string $className
-	 * @param MysqliConnection $dbi
-	 * @param string $tableName
-	 */
-	public function __construct($className, MysqliConnection $dbi, $tableName) {
+	public function __construct($className, \mysqli $link, $tableName) {
 		$this->className = $className;
-		$this->dbi = $dbi;
+		$this->link = $link;
 		$this->tableName = $tableName;
 	}
 
@@ -86,7 +80,7 @@ class MyStorageBuilder {
 	public function build() : MyStorage {
 		return new MyStorage(
 			$this->className,
-			$this->dbi,
+			$this->link,
 			$this->tableName,
 			$this->dedicatedConnectionFactory,
 			$this->idPropertyName,
