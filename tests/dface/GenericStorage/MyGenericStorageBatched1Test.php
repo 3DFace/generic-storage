@@ -22,6 +22,7 @@ class MyGenericStorageBatched1Test extends GenericStorageTest {
 			])
 			->setBatchListSize(1)
 			->setIdBatchSize(1)
+			->setTemporary(true)
 			->build();
 		$this->storage->reset();
 	}

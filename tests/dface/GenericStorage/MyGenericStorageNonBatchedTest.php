@@ -26,6 +26,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 				'INDEX email(email)',
 			])
 			->setBatchListSize(0)
+			->setTemporary(true)
 			->build();
 		$this->storage->reset();
 	}
