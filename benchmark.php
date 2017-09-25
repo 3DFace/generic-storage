@@ -25,6 +25,9 @@ $storage = (new MyStorageBuilder(TestEntity::class, $link, 'test_gen_storage'))
 		'INDEX email(email)',
 	])
 	->setBatchListSize(0)
+//	->setTemporary(true)
+//	->setDbCharset('cp1251')
+//	->setProjectCharset('koi8r')
 	->build();
 $storage->reset();
 

@@ -47,6 +47,10 @@ class MyStorage implements GenericStorage {
 	private $batchListSize;
 	/** @var int */
 	private $idBatchSize;
+	/** @var string|null */
+	private $dbCharset;
+	/** @var string|null */
+	private $projectCharset;
 
 	public function __construct(
 		string $className,
@@ -58,8 +62,10 @@ class MyStorage implements GenericStorage {
 		array $add_indexes = [],
 		bool $has_unique_secondary = false,
 		bool $temporary = false,
-		int $batch_list_size = 10000,
-		int $id_batch_size = 500
+		int $batch_list_size,
+		int $id_batch_size,
+		?string $dbCharset,
+		?string $projectCharset
 	) {
 		$this->className = $className;
 		$this->dbi = new MysqliConnection($link, new DefaultParser(), new DefaultFormatter());
@@ -89,6 +95,8 @@ class MyStorage implements GenericStorage {
 			throw new \InvalidArgumentException("Id batch size must be >0, $id_batch_size given");
 		}
 		$this->idBatchSize = $id_batch_size;
+		$this->dbCharset = $dbCharset;
+		$this->projectCharset = $projectCharset;
 	}
 
 	/**
@@ -174,8 +182,22 @@ class MyStorage implements GenericStorage {
 		}
 	}
 
+	private function convertArrayEncoding(array &$arr, string $from, string $to) : void {
+		array_walk_recursive($arr, function(&$x) use ($to, $from) {
+			if(is_string($x)){
+				$x = mb_convert_encoding($x, $to, $from);
+			}
+		});
+	}
+
 	private function serialize($id, array $arr) : ?string {
+		if($this->projectCharset !== null){
+			$this->convertArrayEncoding($arr, $this->projectCharset, 'utf8');
+		}
 		$data = json_encode($arr, JSON_UNESCAPED_UNICODE);
+		if($this->dbCharset){
+			$data = mb_convert_encoding($data, $this->dbCharset, 'utf8');
+		}
 		if(($len = strlen($data)) > 65535){
 			throw new MyStorageError("Can't write $len bytes as $this->className#$id data at ".self::class);
 		}
@@ -265,6 +287,9 @@ class MyStorage implements GenericStorage {
 		foreach($this->add_columns as $i => $x){
 			$default = $x['default'] ?? null;
 			$v = $this->extractIndexValue($arr, $this->add_columns_data[$i]['path'], $default);
+			if($this->dbCharset !== $this->projectCharset){
+				$v = mb_convert_encoding($v, $this->dbCharset ?? 'utf8', $this->projectCharset ?? 'utf8');
+			}
 			$e_col = '`'.$this->add_columns_data[$i]['escaped'].'`';
 			$e_val = $v === null ? 'null' : "'".$this->link->real_escape_string($v)."'";
 			$add_column_set_str[] = "$e_col=$e_val";
@@ -337,7 +362,8 @@ class MyStorage implements GenericStorage {
 		if($this->add_columns){
 			$it = $this->iterateOver("$this->selectAllFromTable WHERE 1 ", [], 0);
 			foreach($it as $rec){
-				$arr = json_decode($rec['$data'], true);
+				$data = $rec['$data'];
+				$arr = $this->decodeData($data);
 				// TODO: don't update if columns contain correct values
 				$add_column_set_str = $this->createUpdateColumnsFragment($arr);
 				$e_id = $this->link->real_escape_string($rec['$seq_id']);
@@ -361,8 +387,20 @@ class MyStorage implements GenericStorage {
 		}
 	}
 
+	private function decodeData($data){
+		if($this->dbCharset !== null){
+			$data = mb_convert_encoding($data, 'utf8', $this->dbCharset);
+		}
+		$arr = json_decode($data, true);
+		if($this->projectCharset){
+			$this->convertArrayEncoding($arr, 'utf8', $this->projectCharset);
+		}
+		return $arr;
+	}
+
 	private function deserialize(array $rec) {
-		$arr = json_decode($rec['$data'], true);
+		$data = $rec['$data'];
+		$arr = $this->decodeData($data);
 		return call_user_func([$this->className, 'deserialize'], $arr);
 	}
 
@@ -552,7 +590,7 @@ class MyStorage implements GenericStorage {
 			UNIQUE (`\$id`) USING HASH
 			$add_columns
 			$add_indexes
-		) ENGINE=InnoDB");
+		) ENGINE=InnoDB".($this->dbCharset ? " CHARACTER SET '$this->dbCharset'" : ''));
 	}
 
 }

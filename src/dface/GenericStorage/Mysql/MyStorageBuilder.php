@@ -3,8 +3,6 @@
 
 namespace dface\GenericStorage\Mysql;
 
-use dface\Mysql\MysqliConnection;
-
 class MyStorageBuilder {
 
 	/** @var string */
@@ -30,14 +28,18 @@ class MyStorageBuilder {
 	private $batchListSize = 10000;
 	/** @var int */
 	private $idBatchSize = 500;
+	/** @var string|null */
+	private $dbCharset;
+	/** @var string|null */
+	private $projectCharset;
 
-	public function __construct($className, \mysqli $link, $tableName) {
+	public function __construct(string $className, \mysqli $link, string $tableName) {
 		$this->className = $className;
 		$this->link = $link;
 		$this->tableName = $tableName;
 	}
 
-	public function setIdPropertyName($idPropertyName) : MyStorageBuilder {
+	public function setIdPropertyName(?string $idPropertyName) : MyStorageBuilder {
 		$this->idPropertyName = $idPropertyName;
 		return $this;
 	}
@@ -67,13 +69,23 @@ class MyStorageBuilder {
 		return $this;
 	}
 
-	public function setBatchListSize($batchListSize) : MyStorageBuilder {
+	public function setBatchListSize(int $batchListSize) : MyStorageBuilder {
 		$this->batchListSize = $batchListSize;
 		return $this;
 	}
 
-	public function setIdBatchSize($idBatchSize) : MyStorageBuilder {
+	public function setIdBatchSize(int $idBatchSize) : MyStorageBuilder {
 		$this->idBatchSize = $idBatchSize;
+		return $this;
+	}
+
+	public function setDbCharset(?string $dbCharset) : MyStorageBuilder {
+		$this->dbCharset = $dbCharset;
+		return $this;
+	}
+
+	public function setProjectCharset(?string $projectCharset) : MyStorageBuilder {
+		$this->projectCharset = $projectCharset;
 		return $this;
 	}
 
@@ -89,7 +101,9 @@ class MyStorageBuilder {
 			$this->has_unique_secondary,
 			$this->temporary,
 			$this->batchListSize,
-			$this->idBatchSize);
+			$this->idBatchSize,
+			$this->dbCharset,
+			$this->projectCharset);
 	}
 
 }
