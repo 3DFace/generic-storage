@@ -7,9 +7,17 @@ use dface\GenericStorage\Mysql\MyStorage;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
 use dface\GenericStorage\Mysql\MyStorageError;
 use dface\GenericStorage\Mysql\MyUniqueConstraintViolation;
+use dface\Mysql\MysqlException;
+use dface\sql\placeholders\FormatterException;
+use dface\sql\placeholders\ParserException;
 
 class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 
+	/**
+	 * @throws MysqlException
+	 * @throws FormatterException
+	 * @throws ParserException
+	 */
 	protected function setUp() {
 		$dbi = DbiFactory::getConnection();
 		$dbiFac = DbiFactory::getConnectionFactory();
@@ -49,6 +57,9 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 			->build();
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testUniqueConstraint() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -60,6 +71,9 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 		$s->saveItem($uid2, $entity2);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testDataSizeLimited() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -70,6 +84,13 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 		$s->saveItem($uid1, $entity1);
 	}
 
+	/**
+	 * @throws FormatterException
+	 * @throws Generic\GenericStorageError
+	 * @throws MyStorageError
+	 * @throws MysqlException
+	 * @throws ParserException
+	 */
 	public function testUpdateColumns() : void {
 		/** @var MyStorage $s */
 		$s = $this->storage;

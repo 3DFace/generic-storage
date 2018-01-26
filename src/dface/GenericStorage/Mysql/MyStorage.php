@@ -6,6 +6,8 @@ namespace dface\GenericStorage\Mysql;
 use dface\criteria\Criteria;
 use dface\criteria\SqlCriteriaBuilder;
 use dface\GenericStorage\Generic\GenericStorage;
+use dface\GenericStorage\Generic\GenericStorageError;
+use dface\GenericStorage\Generic\InvalidDataType;
 use dface\Mysql\DuplicateEntryException;
 use dface\Mysql\MysqlException;
 use dface\Mysql\MysqliConnection;
@@ -48,6 +50,20 @@ class MyStorage implements GenericStorage {
 	/** @var int */
 	private $idBatchSize;
 
+	/**
+	 * @param string $className
+	 * @param \mysqli $link
+	 * @param string $tableName
+	 * @param $dedicatedLinkFactory
+	 * @param string|null $idPropertyName
+	 * @param array $add_columns
+	 * @param array $add_indexes
+	 * @param bool $has_unique_secondary
+	 * @param bool $temporary
+	 * @param int $batch_list_size
+	 * @param int $id_batch_size
+	 * @throws \InvalidArgumentException
+	 */
 	public function __construct(
 		string $className,
 		\mysqli $link,
@@ -117,13 +133,13 @@ class MyStorage implements GenericStorage {
 	 * @param array|\traversable $ids
 	 * @return \traversable
 	 *
-	 * @throws MyStorageError
+	 * @throws GenericStorageError
 	 */
 	public function getItems($ids) : \traversable {
 		try{
 			$sub_list = [];
 			foreach($ids as $id){
-				if(count($sub_list) === $this->idBatchSize){
+				if(\count($sub_list) === $this->idBatchSize){
 					$where = ' WHERE `$id` IN ('.implode(',', $sub_list).')';
 					$node = "$this->selectAllFromTable $where";
 					yield from $this->iterateOverDecoded($node, [], 0);
@@ -145,12 +161,11 @@ class MyStorage implements GenericStorage {
 	/**
 	 * @param $id
 	 * @param \JsonSerializable $item
-	 * @throws MyStorageError
+	 * @throws GenericStorageError
 	 */
 	public function saveItem($id, \JsonSerializable $item) : void {
 		if(!$item instanceof $this->className){
-			/** @noinspection ExceptionsAnnotatingAndHandlingInspection */
-			throw new \InvalidArgumentException("Stored item must be instance of $this->className");
+			throw new InvalidDataType("Stored item must be instance of $this->className");
 		}
 		try{
 			$arr = $item->jsonSerialize();
@@ -174,9 +189,15 @@ class MyStorage implements GenericStorage {
 		}
 	}
 
+	/**
+	 * @param $id
+	 * @param array $arr
+	 * @return null|string
+	 * @throws GenericStorageError
+	 */
 	private function serialize($id, array $arr) : ?string {
 		$data = json_encode($arr, JSON_UNESCAPED_UNICODE);
-		if(($len = strlen($data)) > 65535){
+		if(($len = \strlen($data)) > 65535){
 			throw new MyStorageError("Can't write $len bytes as $this->className#$id data at ".self::class);
 		}
 		return $data;
@@ -184,7 +205,7 @@ class MyStorage implements GenericStorage {
 
 	/**
 	 * @param $id
-	 * @throws MyStorageError
+	 * @throws GenericStorageError
 	 */
 	public function removeItem($id) : void {
 		try{
@@ -194,9 +215,18 @@ class MyStorage implements GenericStorage {
 		}
 	}
 
+	/**
+	 * @param Criteria $criteria
+	 * @throws GenericStorageError
+	 */
 	public function removeByCriteria(Criteria $criteria) : void {
-		/** @noinspection SqlResolve */
-		$this->dbi->query(new PlainNode(0, "DELETE FROM `$this->tableNameEscaped` WHERE ".$this->makeWhere($criteria)));
+		try{
+			/** @noinspection SqlResolve */
+			$this->dbi->query(new PlainNode(0,
+				"DELETE FROM `$this->tableNameEscaped` WHERE ".$this->makeWhere($criteria)));
+		}catch (MySqlException|FormatterException|ParserException $e){
+			throw new MyStorageError('MyStorage removeByCriteria query failed', 0, $e);
+		}
 	}
 
 	/**
@@ -204,7 +234,7 @@ class MyStorage implements GenericStorage {
 	 * @param string $data
 	 * @param string $add_column_set_node
 	 *
-	 * @throws MysqlException|FormatterException|ParserException
+	 * @throws MysqlException|FormatterException|ParserException|DuplicateEntryException
 	 */
 	private function insert(string $id, string $data, string $add_column_set_node) : void {
 		$e_id = $this->link->real_escape_string($id);
@@ -257,8 +287,6 @@ class MyStorage implements GenericStorage {
 	/**
 	 * @param $arr
 	 * @return string
-	 *
-	 * @throws FormatterException|ParserException
 	 */
 	private function createUpdateColumnsFragment($arr) : string {
 		$add_column_set_str = [];
@@ -293,7 +321,7 @@ class MyStorage implements GenericStorage {
 	 * @param array $orderDef
 	 * @param int $limit
 	 * @return \traversable
-	 * @throws MyStorageError
+	 * @throws GenericStorageError
 	 */
 	public function listAll(array $orderDef = [], int $limit = 0) : \traversable {
 		try{
@@ -309,7 +337,7 @@ class MyStorage implements GenericStorage {
 	 * @param array $orderDef
 	 * @param int $limit
 	 * @return \traversable
-	 * @throws MyStorageError
+	 * @throws GenericStorageError
 	 */
 	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : \traversable {
 		try{
@@ -323,8 +351,7 @@ class MyStorage implements GenericStorage {
 	/**
 	 * @param Criteria $criteria
 	 * @return string
-	 *
-	 * @throws MysqlException|FormatterException|ParserException
+	 * @throws FormatterException|ParserException
 	 */
 	private function makeWhere(Criteria $criteria) : string {
 		[$sql, $args] = $this->criteriaBuilder->build($criteria, function ($property) {
@@ -333,6 +360,11 @@ class MyStorage implements GenericStorage {
 		return $this->dbi->build($sql, ...$args);
 	}
 
+	/**
+	 * @throws FormatterException
+	 * @throws MySqlException
+	 * @throws ParserException
+	 */
 	public function updateColumns() : void {
 		if($this->add_columns){
 			$it = $this->iterateOver("$this->selectAllFromTable WHERE 1 ", [], 0);
@@ -363,7 +395,7 @@ class MyStorage implements GenericStorage {
 
 	private function deserialize(array $rec) {
 		$arr = json_decode($rec['$data'], true);
-		return call_user_func([$this->className, 'deserialize'], $arr);
+		return \call_user_func([$this->className, 'deserialize'], $arr);
 	}
 
 	/**
@@ -376,7 +408,7 @@ class MyStorage implements GenericStorage {
 	private function iterateOver(string $query, array $orderDef, int $limit) : \Generator {
 		if($this->dedicatedLinkFactory !== null){
 			/** @var \mysqli $link */
-			$link = call_user_func($this->dedicatedLinkFactory);
+			$link = \call_user_func($this->dedicatedLinkFactory);
 			/** @var MysqliConnection $dbi */
 			$dbi = new MysqliConnection($link, new DefaultParser(), new DefaultFormatter());
 			try{
@@ -389,9 +421,17 @@ class MyStorage implements GenericStorage {
 		}
 	}
 
+	/**
+	 * @param MysqliConnection $dbi
+	 * @param string $baseQuery
+	 * @param array $orderDef
+	 * @param int $limit
+	 * @return \Generator
+	 * @throws MysqlException|FormatterException|ParserException
+	 */
 	private function iterateOverDbi(MysqliConnection $dbi, string $baseQuery, array $orderDef, int $limit) : \Generator {
 		if($orderDef){
-			if(count($orderDef) === 1 && $orderDef[0][0] === $this->idPropertyName){
+			if(\count($orderDef) === 1 && $orderDef[0][0] === $this->idPropertyName){
 				if($this->batchListSize > 0){
 					if($orderDef[0][1]){
 						yield from $this->iterateOverDbiBatchedBySeqId($dbi, $baseQuery, $limit);
@@ -435,6 +475,10 @@ class MyStorage implements GenericStorage {
 		}
 	}
 
+	/**
+	 * @param array $orderDef
+	 * @return string
+	 */
 	private function buildOrderBy(array $orderDef) : string {
 		$members = [];
 		foreach($orderDef as [$property, $asc]){
@@ -448,7 +492,16 @@ class MyStorage implements GenericStorage {
 		return ' ORDER BY '.implode(', ', $members);
 	}
 
-	private function iterate(MysqliConnection $dbi, string $baseQuery){
+	/**
+	 * @param MysqliConnection $dbi
+	 * @param string $baseQuery
+	 * @return \Generator
+	 * @throws FormatterException
+	 * @throws MySqlException
+	 * @throws ParserException
+	 */
+	private function iterate(MysqliConnection $dbi, string $baseQuery) : \Generator
+	{
 		$it = $dbi->query(new PlainNode(0, $baseQuery));
 		try{
 			foreach($it as $rec){
@@ -459,6 +512,15 @@ class MyStorage implements GenericStorage {
 		}
 	}
 
+	/**
+	 * @param MysqliConnection $dbi
+	 * @param string $baseQuery
+	 * @param int $limit
+	 * @return \Generator
+	 * @throws FormatterException
+	 * @throws MySqlException
+	 * @throws ParserException
+	 */
 	private function iterateOverDbiBatchedBySeqId(MysqliConnection $dbi, string $baseQuery, int $limit) : \Generator {
 		$last_seq_id = 0;
 		$loaded = 0;
@@ -485,6 +547,15 @@ class MyStorage implements GenericStorage {
 		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
 
+	/**
+	 * @param MysqliConnection $dbi
+	 * @param string $baseQuery
+	 * @param int $limit
+	 * @return \Generator
+	 * @throws FormatterException
+	 * @throws MySqlException
+	 * @throws ParserException
+	 */
 	private function iterateOverDbiBatchedBySeqIdDesc(MysqliConnection $dbi, string $baseQuery, int $limit) : \Generator {
 		$last_seq_id = PHP_INT_MAX;
 		$loaded = 0;
@@ -511,6 +582,15 @@ class MyStorage implements GenericStorage {
 		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
 
+	/**
+	 * @param MysqliConnection $dbi
+	 * @param string $baseQuery
+	 * @param int $limit
+	 * @return \Generator
+	 * @throws FormatterException
+	 * @throws MySqlException
+	 * @throws ParserException
+	 */
 	private function iterateOverDbiBatchedByLimit(MysqliConnection $dbi, string $baseQuery, int $limit) : \Generator {
 		$loaded = 0;
 		do{
@@ -535,6 +615,11 @@ class MyStorage implements GenericStorage {
 		}while($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
 
+	/**
+	 * @throws FormatterException
+	 * @throws MySqlException
+	 * @throws ParserException
+	 */
 	public function reset() : void {
 		$add_columns = array_map(function ($type, $i) {
 			$type = $type['type'] ?? $type;

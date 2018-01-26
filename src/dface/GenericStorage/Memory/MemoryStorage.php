@@ -8,6 +8,7 @@ use dface\criteria\Criteria;
 use dface\criteria\PredicateCriteriaBuilder;
 use dface\criteria\SimpleComparator;
 use dface\GenericStorage\Generic\GenericStorage;
+use dface\GenericStorage\Generic\InvalidDataType;
 
 class MemoryStorage implements GenericStorage {
 
@@ -35,6 +36,10 @@ class MemoryStorage implements GenericStorage {
 		return $this->storage[(string)$id] ?? null;
 	}
 
+	/**
+	 * @param array|\traversable $ids
+	 * @return \JsonSerializable[]|\traversable
+	 */
 	public function getItems($ids) : \traversable {
 		foreach($ids as $id){
 			$k = (string)$id;
@@ -44,9 +49,14 @@ class MemoryStorage implements GenericStorage {
 		}
 	}
 
+	/**
+	 * @param $id
+	 * @param \JsonSerializable $item
+	 * @throws InvalidDataType
+	 */
 	public function saveItem($id, \JsonSerializable $item) : void {
 		if(!$item instanceof $this->className){
-			throw new \InvalidArgumentException("Stored item must be instance of $this->className");
+			throw new InvalidDataType("Stored item must be instance of $this->className");
 		}
 		$k = (string)$id;
 		$this->storage[$k] = $item;
@@ -76,7 +86,7 @@ class MemoryStorage implements GenericStorage {
 			});
 		}
 		if($limit){
-			$values = array_slice($values, 0, $limit, true);
+			$values = \array_slice($values, 0, $limit, true);
 		}
 		return new \ArrayIterator($values);
 	}
@@ -97,7 +107,7 @@ class MemoryStorage implements GenericStorage {
 			});
 		}
 		if($limit){
-			$values = array_slice($values, 0, $limit, true);
+			$values = \array_slice($values, 0, $limit, true);
 		}
 		/** @noinspection PhpIncompatibleReturnTypeInspection */
 		return new \ArrayIterator($values);

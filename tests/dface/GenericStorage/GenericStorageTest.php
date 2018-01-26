@@ -8,6 +8,7 @@ use dface\criteria\NotEquals;
 use dface\criteria\Reference;
 use dface\criteria\StringConstant;
 use dface\GenericStorage\Generic\GenericStorage;
+use dface\GenericStorage\Generic\InvalidDataType;
 use PHPUnit\Framework\TestCase;
 
 abstract class GenericStorageTest extends TestCase {
@@ -15,10 +16,13 @@ abstract class GenericStorageTest extends TestCase {
 	/** @var GenericStorage */
 	protected $storage;
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testWrongTypeDoNotPass() : void {
 		$s = $this->storage;
 		$uid = new TestId();
-		$this->expectException(\InvalidArgumentException::class);
+		$this->expectException(InvalidDataType::class);
 		$s->saveItem($uid, new class() implements \JsonSerializable {
 			public function jsonSerialize() {
 				return [];
@@ -26,6 +30,9 @@ abstract class GenericStorageTest extends TestCase {
 		});
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testCorrectlySaved() : void {
 		$s = $this->storage;
 		$uid = new TestId();
@@ -35,6 +42,9 @@ abstract class GenericStorageTest extends TestCase {
 		$this->assertEquals($entity, $loaded);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testRemoved() : void {
 		$s = $this->storage;
 		$uid = new TestId();
@@ -47,6 +57,9 @@ abstract class GenericStorageTest extends TestCase {
 		$this->assertNull($must_be_null);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testRemovedByCriteria() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -64,6 +77,9 @@ abstract class GenericStorageTest extends TestCase {
 		], $loaded_arr);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testOverwrite() : void {
 		$s = $this->storage;
 		$uid = new TestId();
@@ -75,6 +91,9 @@ abstract class GenericStorageTest extends TestCase {
 		$this->assertEquals($entity2, $loaded);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testIndexWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -96,6 +115,9 @@ abstract class GenericStorageTest extends TestCase {
 		$this->assertEquals([], $loaded_arr);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testIdIndexWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -113,6 +135,9 @@ abstract class GenericStorageTest extends TestCase {
 		$this->assertEquals([], $loaded_arr);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testMultiGetWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -132,6 +157,9 @@ abstract class GenericStorageTest extends TestCase {
 		], $loaded_arr);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testListAllWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -148,6 +176,9 @@ abstract class GenericStorageTest extends TestCase {
 		], $loaded_arr);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testListAllOrderedWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -175,6 +206,9 @@ abstract class GenericStorageTest extends TestCase {
 		], $loaded_arr);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testListAllOrderedWithLimitWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -200,6 +234,9 @@ abstract class GenericStorageTest extends TestCase {
 		], $loaded_arr);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testListAllUnorderedWithLimitWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -220,6 +257,9 @@ abstract class GenericStorageTest extends TestCase {
 		], $loaded_arr);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testListFilteredAndOrderedWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -247,6 +287,9 @@ abstract class GenericStorageTest extends TestCase {
 		], $loaded_arr);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testListFilteredAndOrderedWithLimitWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
@@ -272,6 +315,9 @@ abstract class GenericStorageTest extends TestCase {
 		], $loaded_arr);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testListAllOrderByIdWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId(hex2bin('00000000000000000000000000000001'));
@@ -299,6 +345,9 @@ abstract class GenericStorageTest extends TestCase {
 		], $loaded_arr);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testListAllOrderByIdWithLimitWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId(hex2bin('00000000000000000000000000000001'));

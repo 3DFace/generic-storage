@@ -16,6 +16,9 @@ class DbiFactory {
 		return $dbi;
 	}
 
+	/**
+	 * @return callable
+	 */
 	public static function getConnectionFactory() : callable {
 		static $fac;
 		if($fac === null){
@@ -24,6 +27,7 @@ class DbiFactory {
 				include_once __DIR__.'/../../../options.php';
 				$link = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_BASE);
 				if(!$link){
+					/** @noinspection ExceptionsAnnotatingAndHandlingInspection */
 					throw new MysqlException(mysqli_connect_error());
 				}
 				$link->set_charset(DB_CHARSET);

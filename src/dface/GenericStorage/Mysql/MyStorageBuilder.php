@@ -3,8 +3,6 @@
 
 namespace dface\GenericStorage\Mysql;
 
-use dface\Mysql\MysqliConnection;
-
 class MyStorageBuilder {
 
 	/** @var string */
@@ -77,6 +75,10 @@ class MyStorageBuilder {
 		return $this;
 	}
 
+	/**
+	 * @return MyStorage
+	 * @throws \InvalidArgumentException
+	 */
 	public function build() : MyStorage {
 		return new MyStorage(
 			$this->className,

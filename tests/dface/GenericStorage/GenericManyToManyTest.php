@@ -11,6 +11,9 @@ abstract class GenericManyToManyTest extends TestCase {
 	/** @var GenericManyToMany */
 	protected $assoc;
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testOneToOne() : void {
 		$l = new TestId();
 		$r = new TestId();
@@ -23,6 +26,9 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assertEquals([$l], $byRight);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testManyToOne() : void {
 		$l1 = new TestId();
 		$l2 = new TestId();
@@ -45,6 +51,9 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assertEquals([], $byRight);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testOneToMany() : void {
 		$l = new TestId();
 
@@ -67,6 +76,9 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assertEquals([], $byLeft);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testRemove() : void {
 		$l = new TestId();
 		$r = new TestId();
@@ -80,6 +92,9 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assertEquals([], $byRight);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testClearLeft() : void {
 		$l1 = new TestId();
 		$l2 = new TestId();
@@ -98,6 +113,9 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assertSetIs([$r3, $r4], $byLeft);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testClearRight() : void {
 		$l1 = new TestId();
 		$l2 = new TestId();
@@ -117,9 +135,9 @@ abstract class GenericManyToManyTest extends TestCase {
 	}
 
 	private function assertSetIs(array $expected, array $set){
-		$this->assertCount(count($expected), $set);
+		$this->assertCount(\count($expected), $set);
 		foreach($expected as $e){
-			$this->assertTrue(in_array($e, $set, false));
+			$this->assertTrue(\in_array($e, $set, false));
 		}
 	}
 

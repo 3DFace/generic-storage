@@ -4,9 +4,17 @@
 namespace dface\GenericStorage;
 
 use dface\GenericStorage\Mysql\MyStorageBuilder;
+use dface\Mysql\MysqlException;
+use dface\sql\placeholders\FormatterException;
+use dface\sql\placeholders\ParserException;
 
 class MyGenericStorageBatched10Test extends GenericStorageTest {
 
+	/**
+	 * @throws MysqlException
+	 * @throws FormatterException
+	 * @throws ParserException
+	 */
 	protected function setUp(){
 		$dbi = DbiFactory::getConnection();
 		$dbiFac = DbiFactory::getConnectionFactory();

@@ -8,7 +8,11 @@ class TestId {
 	private $bin;
 
 	public function __construct($bin = null) {
-		$this->bin = $bin ?? random_bytes(16);
+		$this->bin = $bin;
+		if($this->bin === null){
+			/** @noinspection PhpUnhandledExceptionInspection */
+			$this->bin = \random_bytes(16);
+		}
 	}
 
 	public function __toString() {

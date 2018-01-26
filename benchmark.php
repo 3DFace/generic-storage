@@ -26,6 +26,8 @@ $storage = (new MyStorageBuilder(TestEntity::class, $link, 'test_gen_storage'))
 	])
 	->setBatchListSize(0)
 	->build();
+
+/** @noinspection PhpUnhandledExceptionInspection */
 $storage->reset();
 
 $limit = 10000;
@@ -42,7 +44,9 @@ $started = microtime(true);
 
 foreach($data as $e){
 	$id = $e->getId();
+	/** @noinspection PhpUnhandledExceptionInspection */
 	$storage->saveItem($id, $e);
+	/** @noinspection PhpUnhandledExceptionInspection */
 	$storage->getItem($id);
 }
 

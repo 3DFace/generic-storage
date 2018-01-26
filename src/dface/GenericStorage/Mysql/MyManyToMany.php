@@ -188,6 +188,11 @@ class MyManyToMany implements GenericManyToMany {
 		$this->dbi->update($q1);
 	}
 
+	/**
+	 * @throws FormatterException
+	 * @throws MySqlException
+	 * @throws ParserException
+	 */
 	public function reset() : void {
 		$this->dbi->query('DROP TABLE IF EXISTS {i}', $this->tableName);
 		$tmp = $this->temporary ? 'TEMPORARY' : '';

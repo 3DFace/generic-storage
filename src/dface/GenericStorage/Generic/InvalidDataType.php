@@ -3,7 +3,7 @@
 
 namespace dface\GenericStorage\Generic;
 
-interface GenericStorageError extends \Throwable
+class InvalidDataType extends \Exception implements GenericStorageError
 {
 
 }

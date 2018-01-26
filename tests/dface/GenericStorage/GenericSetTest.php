@@ -11,6 +11,9 @@ abstract class GenericSetTest extends TestCase {
 	/** @var GenericSet */
 	protected $set;
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testContainsAdded() : void {
 		$id = new TestId();
 		$this->set->add($id);
@@ -18,6 +21,9 @@ abstract class GenericSetTest extends TestCase {
 		$this->assertEquals([$id], iterator_to_array($this->set->iterate()));
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function TestId() : void {
 		$id = new TestId();
 		$this->set->add($id);
@@ -26,6 +32,9 @@ abstract class GenericSetTest extends TestCase {
 		$this->assertEquals([$id], iterator_to_array($this->set->iterate()));
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testNotContainsRemoved() : void {
 		$id = new TestId();
 		$this->set->add($id);
