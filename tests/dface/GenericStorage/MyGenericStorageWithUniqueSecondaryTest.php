@@ -24,6 +24,7 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $dbi, 'test_gen_storage'))
 			->setDedicatedConnectionFactory($dbiFac)
 			->setIdPropertyName('id')
+			->setRevisionPropertyName('revision')
 			->addColumns([
 				'name' => 'VARCHAR(128)',
 				'email' => 'VARCHAR(128)',
@@ -64,8 +65,8 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
-		$entity1 = new TestEntity($uid1, 'Test User', 'user@test.php', new TestData('asd', 10));
-		$entity2 = new TestEntity($uid2, 'Test User', 'user@test.php', new TestData('asd', 10));
+		$entity1 = new TestEntity($uid1, 'Test User', 'user@test.php', new TestData('asd', 10), 1);
+		$entity2 = new TestEntity($uid2, 'Test User', 'user@test.php', new TestData('asd', 10), 1);
 		$s->saveItem($uid1, $entity1);
 		$this->expectException(MyUniqueConstraintViolation::class);
 		$s->saveItem($uid2, $entity2);
@@ -78,7 +79,7 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 		$s = $this->storage;
 		$uid1 = new TestId();
 		$data = new TestData(str_repeat('x', 65535), 10);
-		$entity1 = new TestEntity($uid1, 'Test User', 'user@test.php', $data);
+		$entity1 = new TestEntity($uid1, 'Test User', 'user@test.php', $data, 1);
 		$this->expectException(MyStorageError::class);
 		$this->expectExceptionCode(0);
 		$s->saveItem($uid1, $entity1);
@@ -96,8 +97,8 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php', new TestData('asd', 10));
-		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php', new TestData('asd', 10));
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php', new TestData('asd', 10), 1);
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 		$s->updateColumns();

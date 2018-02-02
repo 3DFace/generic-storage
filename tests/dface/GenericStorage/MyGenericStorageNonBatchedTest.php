@@ -26,6 +26,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 		$this->dbi = DbiFactory::getConnection();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $this->dbi, 'test_gen_storage'))
 			->setIdPropertyName('id')
+			->setRevisionPropertyName('revision')
 			->addColumns([
 				'email' => 'VARCHAR(128)',
 				'data/a' => 'VARCHAR(128)',
@@ -111,7 +112,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 		$this->broke();
 		$this->expectException(MyStorageError::class);
 		$this->expectExceptionCode(0);
-		$this->storage->saveItem($id = new TestId(), new TestEntity($id, 'name', 'none'));
+		$this->storage->saveItem($id = new TestId(), new TestEntity($id, 'name', 'none', null, 1));
 	}
 
 	/**

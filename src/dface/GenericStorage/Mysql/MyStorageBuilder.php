@@ -14,6 +14,8 @@ class MyStorageBuilder {
 
 	/** @var string */
 	private $idPropertyName;
+	/** @var string */
+	private $revisionPropertyName;
 	/** @var string[] */
 	private $add_columns = [];
 	/** @var string[] */
@@ -37,6 +39,11 @@ class MyStorageBuilder {
 
 	public function setIdPropertyName($idPropertyName) : MyStorageBuilder {
 		$this->idPropertyName = $idPropertyName;
+		return $this;
+	}
+
+	public function setRevisionPropertyName($revisionPropertyName) : MyStorageBuilder {
+		$this->revisionPropertyName = $revisionPropertyName;
 		return $this;
 	}
 
@@ -86,6 +93,7 @@ class MyStorageBuilder {
 			$this->tableName,
 			$this->dedicatedConnectionFactory,
 			$this->idPropertyName,
+			$this->revisionPropertyName,
 			$this->add_columns,
 			$this->add_indexes,
 			$this->has_unique_secondary,

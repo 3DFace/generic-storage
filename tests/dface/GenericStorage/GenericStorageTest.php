@@ -9,6 +9,8 @@ use dface\criteria\Reference;
 use dface\criteria\StringConstant;
 use dface\GenericStorage\Generic\GenericStorage;
 use dface\GenericStorage\Generic\InvalidDataType;
+use dface\GenericStorage\Generic\ItemAlreadyExists;
+use dface\GenericStorage\Generic\UnexpectedRevision;
 use PHPUnit\Framework\TestCase;
 
 abstract class GenericStorageTest extends TestCase {
@@ -36,7 +38,7 @@ abstract class GenericStorageTest extends TestCase {
 	public function testCorrectlySaved() : void {
 		$s = $this->storage;
 		$uid = new TestId();
-		$entity = new TestEntity($uid, 'Test User', 'user@test.php', new TestData('asd', 10));
+		$entity = new TestEntity($uid, 'Test User', 'user@test.php', new TestData('asd', 10), 1);
 		$s->saveItem($uid, $entity);
 		$loaded = $s->getItem($uid);
 		$this->assertEquals($entity, $loaded);
@@ -48,7 +50,7 @@ abstract class GenericStorageTest extends TestCase {
 	public function testRemoved() : void {
 		$s = $this->storage;
 		$uid = new TestId();
-		$entity = new TestEntity($uid, 'Test User', 'user@test.php');
+		$entity = new TestEntity($uid, 'Test User', 'user@test.php', null, 1);
 		$s->saveItem($uid, $entity);
 		$loaded = $s->getItem($uid);
 		$this->assertEquals($entity, $loaded);
@@ -64,8 +66,8 @@ abstract class GenericStorageTest extends TestCase {
 		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'user1@test.php');
-		$entity2 = new TestEntity($uid2, 'Test User 2', 'user2@test.php');
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'user1@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'user2@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 
@@ -81,14 +83,86 @@ abstract class GenericStorageTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testOverwrite() : void {
+		if(static::class === MyGenericStorageWithUniqueSecondaryTest::class){
+			echo 1;
+		}
 		$s = $this->storage;
 		$uid = new TestId();
-		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10));
-		$entity2 = new TestEntity($uid, 'Test User 2', 'user@test.php', new TestData('asd', 10));
+		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
+		$entity2 = new TestEntity($uid, 'Test User 2', 'user@test.php', new TestData('asd', 10), 1);
 		$s->saveItem($uid, $entity1);
 		$s->saveItem($uid, $entity2);
 		$loaded = $s->getItem($uid);
-		$this->assertEquals($entity2, $loaded);
+		$this->assertEquals($entity2->withRevision(2), $loaded);
+	}
+
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
+	public function testOverwriteRevisionGrows() : void {
+		if(static::class === MyGenericStorageWithUniqueSecondaryTest::class){
+			echo 1;
+		}
+		$s = $this->storage;
+		$uid = new TestId();
+		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
+
+		$s->saveItem($uid, $entity1);
+		$s->saveItem($uid, $entity1);
+		$s->saveItem($uid, $entity1);
+		$loaded = $s->getItem($uid);
+		$this->assertEquals($entity1->withRevision(3), $loaded);
+	}
+
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
+	public function testRemoveResetRevision() : void {
+		if(static::class === MyGenericStorageWithUniqueSecondaryTest::class){
+			echo 1;
+		}
+		$s = $this->storage;
+		$uid = new TestId();
+		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
+		$s->saveItem($uid, $entity1);
+		$s->saveItem($uid, $entity1);
+		$s->removeItem($uid);
+		$s->saveItem($uid, $entity1);
+		$loaded = $s->getItem($uid);
+		$this->assertEquals($entity1->withRevision(1), $loaded);
+	}
+
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
+	public function testExpectedNew() : void {
+		if(static::class === MyGenericStorageWithUniqueSecondaryTest::class){
+			echo 1;
+		}
+		$s = $this->storage;
+		$uid = new TestId();
+		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
+
+		$s->saveItem($uid, $entity1, 0);
+		$this->expectException(ItemAlreadyExists::class);
+		$s->saveItem($uid, $entity1, 0);
+	}
+
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
+	public function testExpected1() : void {
+		if(static::class === MyGenericStorageWithUniqueSecondaryTest::class){
+			echo 1;
+		}
+		$s = $this->storage;
+		$uid = new TestId();
+		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
+
+		$s->saveItem($uid, $entity1);
+		$s->saveItem($uid, $entity1, 1);
+		$this->expectException(UnexpectedRevision::class);
+		$s->saveItem($uid, $entity1, 1);
 	}
 
 	/**
@@ -98,8 +172,8 @@ abstract class GenericStorageTest extends TestCase {
 		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
-		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php');
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 
@@ -121,7 +195,7 @@ abstract class GenericStorageTest extends TestCase {
 	public function testIdIndexWorks() : void {
 		$s = $this->storage;
 		$uid1 = new TestId();
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 
 		$criteria = new Equals(new Reference('id'), new StringConstant((string)$uid1));
@@ -143,9 +217,9 @@ abstract class GenericStorageTest extends TestCase {
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$uid3 = new TestId();
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
-		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php');
-		$entity3 = new TestEntity($uid3, 'Test User 3', 'user@test.php');
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php', null, 1);
+		$entity3 = new TestEntity($uid3, 'Test User 3', 'user@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 		$s->saveItem($uid3, $entity3);
@@ -164,8 +238,8 @@ abstract class GenericStorageTest extends TestCase {
 		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php');
-		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php');
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 
@@ -184,9 +258,9 @@ abstract class GenericStorageTest extends TestCase {
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$uid3 = new TestId();
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php');
-		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php');
-		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php');
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
+		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 		$s->saveItem($uid3, $entity3);
@@ -214,9 +288,9 @@ abstract class GenericStorageTest extends TestCase {
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$uid3 = new TestId();
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php');
-		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php');
-		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php');
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
+		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 		$s->saveItem($uid3, $entity3);
@@ -242,9 +316,9 @@ abstract class GenericStorageTest extends TestCase {
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$uid3 = new TestId();
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php');
-		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php');
-		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php');
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
+		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 		$s->saveItem($uid3, $entity3);
@@ -265,9 +339,9 @@ abstract class GenericStorageTest extends TestCase {
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$uid3 = new TestId();
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php');
-		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php');
-		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php');
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
+		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 		$s->saveItem($uid3, $entity3);
@@ -295,9 +369,9 @@ abstract class GenericStorageTest extends TestCase {
 		$uid1 = new TestId();
 		$uid2 = new TestId();
 		$uid3 = new TestId();
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php');
-		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php');
-		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php');
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
+		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 		$s->saveItem($uid3, $entity3);
@@ -323,9 +397,9 @@ abstract class GenericStorageTest extends TestCase {
 		$uid1 = new TestId(hex2bin('00000000000000000000000000000001'));
 		$uid2 = new TestId(hex2bin('00000000000000000000000000000002'));
 		$uid3 = new TestId(hex2bin('00000000000000000000000000000003'));
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php');
-		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php');
-		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php');
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
+		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 		$s->saveItem($uid3, $entity3);
@@ -353,9 +427,9 @@ abstract class GenericStorageTest extends TestCase {
 		$uid1 = new TestId(hex2bin('00000000000000000000000000000001'));
 		$uid2 = new TestId(hex2bin('00000000000000000000000000000002'));
 		$uid3 = new TestId(hex2bin('00000000000000000000000000000003'));
-		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php');
-		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php');
-		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php');
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
+		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 		$s->saveItem($uid3, $entity3);

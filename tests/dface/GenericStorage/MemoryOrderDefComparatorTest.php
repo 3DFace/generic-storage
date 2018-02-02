@@ -25,8 +25,8 @@ class MemoryOrderDefComparatorTest extends TestCase {
 	}
 
 	public function testAll(){
-		$e1 = new TestEntity(new TestId(), 'Name1', 'Email');
-		$e2 = new TestEntity(new TestId(), 'Name2', 'Email');
+		$e1 = (new TestEntity(new TestId(), 'Name1', 'Email', null, 1))->jsonSerialize();
+		$e2 = (new TestEntity(new TestId(), 'Name2', 'Email', null, 1))->jsonSerialize();
 
 		$c = $this->init([['name', true]]);
 		$this->assertEquals(-1, $c->compare($e1, $e2));

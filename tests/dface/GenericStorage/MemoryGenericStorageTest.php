@@ -8,7 +8,7 @@ use dface\GenericStorage\Memory\MemoryStorage;
 class MemoryGenericStorageTest extends GenericStorageTest {
 
 	protected function setUp() {
-		$this->storage = new MemoryStorage(TestEntity::class);
+		$this->storage = new MemoryStorage(TestEntity::class, 'revision');
 	}
 
 }

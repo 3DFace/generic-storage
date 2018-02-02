@@ -25,9 +25,7 @@ class MemoryOrderDefComparator {
 		$this->valueComparator = $valueComparator;
 	}
 
-	public function compare(\JsonSerializable $i1, \JsonSerializable $i2) : int {
-		$arr1 = $i1->jsonSerialize();
-		$arr2 = $i2->jsonSerialize();
+	public function compare(array $arr1, array $arr2) : int {
 		foreach($this->orderDef as [$property, $asc]){
 			$v1 = $this->navigator->getValue($arr1, $property);
 			$v2 = $this->navigator->getValue($arr2, $property);

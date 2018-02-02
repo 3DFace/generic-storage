@@ -24,9 +24,10 @@ interface GenericStorage {
 	/**
 	 * @param $id
 	 * @param \JsonSerializable $item
+	 * @param null|int $expectedRevision
 	 * @throws GenericStorageError
 	 */
-	public function saveItem($id, \JsonSerializable $item) : void;
+	public function saveItem($id, \JsonSerializable $item, int $expectedRevision = null) : void;
 
 	/**
 	 * @param $id

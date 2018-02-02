@@ -13,6 +13,8 @@ class TestEntity implements \JsonSerializable {
 	private $email;
 	/** @var TestData */
 	private $data;
+	/** @var int */
+	private $revision;
 
 	/**
 	 * TestEntity constructor.
@@ -20,12 +22,14 @@ class TestEntity implements \JsonSerializable {
 	 * @param string $name
 	 * @param string $email
 	 * @param TestData|null $data
+	 * @param int|null $revision
 	 */
-	public function __construct(TestId $id, $name, $email, ?TestData $data = null) {
+	public function __construct(TestId $id, $name, $email, ?TestData $data, ?int $revision) {
 		$this->id = $id;
 		$this->name = $name;
 		$this->email = $email;
 		$this->data = $data;
+		$this->revision = $revision;
 	}
 
 	public function getId() : TestId {
@@ -44,12 +48,23 @@ class TestEntity implements \JsonSerializable {
 		return $this->data;
 	}
 
+	public function getRevision() : ?int {
+		return $this->revision;
+	}
+
+	public function withRevision(?int $revision) : self {
+		$x = clone $this;
+		$x->revision = $revision;
+		return $x;
+	}
+
 	public function jsonSerialize() : array {
 		return [
 			'id' => (string)$this->id,
 			'name' => $this->name,
 			'email' => $this->email,
 			'data' => $this->data === null ? null : $this->data->jsonSerialize(),
+			'revision' => $this->revision,
 		];
 	}
 
@@ -60,7 +75,8 @@ class TestEntity implements \JsonSerializable {
 			$id,
 			$arr['name'],
 			$arr['email'],
-			$data);
+			$data,
+			$arr['revision']);
 	}
 
 }

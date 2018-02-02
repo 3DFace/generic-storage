@@ -5,9 +5,12 @@ namespace dface\GenericStorage\Mysql;
 
 use dface\criteria\Criteria;
 use dface\criteria\SqlCriteriaBuilder;
+use dface\GenericStorage\Generic\ArrayPathNavigator;
 use dface\GenericStorage\Generic\GenericStorage;
 use dface\GenericStorage\Generic\GenericStorageError;
 use dface\GenericStorage\Generic\InvalidDataType;
+use dface\GenericStorage\Generic\ItemAlreadyExists;
+use dface\GenericStorage\Generic\UnexpectedRevision;
 use dface\Mysql\DuplicateEntryException;
 use dface\Mysql\MysqlException;
 use dface\Mysql\MysqliConnection;
@@ -29,6 +32,8 @@ class MyStorage implements GenericStorage {
 	private $tableNameEscaped;
 	/** @var string */
 	private $idPropertyName;
+	/** @var string */
+	private $revisionPropertyPath;
 	/** @var string[] */
 	private $add_columns;
 	/** @var string[] */
@@ -56,6 +61,7 @@ class MyStorage implements GenericStorage {
 	 * @param string $tableName
 	 * @param $dedicatedLinkFactory
 	 * @param string|null $idPropertyName
+	 * @param string|null $revisionPropertyName
 	 * @param array $add_columns
 	 * @param array $add_indexes
 	 * @param bool $has_unique_secondary
@@ -70,6 +76,7 @@ class MyStorage implements GenericStorage {
 		string $tableName,
 		$dedicatedLinkFactory,
 		string $idPropertyName = null,
+		string $revisionPropertyName = null,
 		array $add_columns = [],
 		array $add_indexes = [],
 		bool $has_unique_secondary = false,
@@ -82,6 +89,9 @@ class MyStorage implements GenericStorage {
 		$this->link = $link;
 		$this->tableNameEscaped = str_replace('`', '``', $tableName);
 		$this->idPropertyName = $idPropertyName;
+		if($revisionPropertyName !== null){
+			$this->revisionPropertyPath = explode('/', $revisionPropertyName);
+		}
 		$this->add_columns = $add_columns;
 		$this->add_columns_data = [];
 		foreach($this->add_columns as $i => $x){
@@ -96,7 +106,7 @@ class MyStorage implements GenericStorage {
 		$this->has_unique_secondary = $has_unique_secondary;
 		$this->criteriaBuilder = new SqlCriteriaBuilder();
 		/** @noinspection SqlResolve */
-		$this->selectAllFromTable = "SELECT `\$seq_id`, LOWER(HEX(`\$id`)) as `\$id`, `\$data` FROM `$this->tableNameEscaped`";
+		$this->selectAllFromTable = "SELECT `\$seq_id`, LOWER(HEX(`\$id`)) as `\$id`, `\$data`, `\$revision` FROM `$this->tableNameEscaped`";
 		if($batch_list_size < 0){
 			throw new \InvalidArgumentException("Batch list size must be >=0, $batch_list_size given");
 		}
@@ -118,7 +128,7 @@ class MyStorage implements GenericStorage {
 			$e_id = $this->link->real_escape_string($id);
 			/** @var \Traversable $it1 */
 			/** @noinspection SqlResolve */
-			$it1 = $this->dbi->query(new PlainNode(0, "SELECT `\$data` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')"));
+			$it1 = $this->dbi->query(new PlainNode(0, "SELECT `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')"));
 			/** @noinspection LoopWhichDoesNotLoopInspection */
 			foreach($it1 as $rec){
 				return $this->deserialize($rec);
@@ -161,28 +171,46 @@ class MyStorage implements GenericStorage {
 	/**
 	 * @param $id
 	 * @param \JsonSerializable $item
+	 * @param int $expectedRevision
 	 * @throws GenericStorageError
 	 */
-	public function saveItem($id, \JsonSerializable $item) : void {
+	public function saveItem($id, \JsonSerializable $item, int $expectedRevision = null) : void {
 		if(!$item instanceof $this->className){
 			throw new InvalidDataType("Stored item must be instance of $this->className");
 		}
 		try{
 			$arr = $item->jsonSerialize();
+			if($this->revisionPropertyPath !== null){
+				ArrayPathNavigator::unsetProperty($arr, $this->revisionPropertyPath);
+			}
 			$add_column_set_node = $this->createUpdateColumnsFragment($arr);
 			$add_column_set_node = $add_column_set_node ? (', '.$add_column_set_node) : '';
 			$data = $this->serialize($id, $arr);
-			if($this->has_unique_secondary){
+
+			if($expectedRevision === 0){
 				try{
 					$this->insert($id, $data, $add_column_set_node);
-				}catch(DuplicateEntryException $e){
-					if($e->getKey() !== '$id'){
-						throw new MyUniqueConstraintViolation($e->getKey(), $e->getEntry(), $e->getMessage(), $e->getCode(), $e);
-					}
-					$this->update($id, $data, $add_column_set_node);
+				}catch (DuplicateEntryException $e){
+					throw new ItemAlreadyExists("Item '$id' already exists");
 				}
-			}else{
-				$this->insertOnDupUpdate($id, $data, $add_column_set_node);
+			}else {
+				if($expectedRevision > 0){
+					$this->update($id, $data, $add_column_set_node, $expectedRevision);
+				}else {
+					if ($this->has_unique_secondary) {
+						try{
+							$this->insert($id, $data, $add_column_set_node);
+						}catch (DuplicateEntryException $e){
+							if ($e->getKey() !== '$id') {
+								throw new MyUniqueConstraintViolation($e->getKey(), $e->getEntry(), $e->getMessage(),
+									$e->getCode(), $e);
+							}
+							$this->update($id, $data, $add_column_set_node, null);
+						}
+					}else {
+						$this->insertOnDupUpdate($id, $data, $add_column_set_node);
+					}
+				}
 			}
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new MyStorageError($e->getMessage(), 0, $e);
@@ -247,14 +275,26 @@ class MyStorage implements GenericStorage {
 	 * @param string $id
 	 * @param string $data
 	 * @param string $add_column_set_node
-	 *
-	 * @throws MysqlException|FormatterException|ParserException
+	 * @param int $expected_rev
+	 * @throws MysqlException|FormatterException|ParserException|UnexpectedRevision
 	 */
-	private function update(string $id, string $data, string $add_column_set_node) : void {
+	private function update(string $id, string $data, string $add_column_set_node, ?int $expected_rev) : void {
 		$e_id = $this->link->real_escape_string($id);
 		$e_data = $this->link->real_escape_string($data);
 		/** @noinspection SqlResolve */
-		$this->dbi->update(new PlainNode(0, "UPDATE `$this->tableNameEscaped` SET `\$data`='$e_data' $add_column_set_node WHERE `\$id`=UNHEX('$e_id')"));
+		$update = new PlainNode(0, "UPDATE `$this->tableNameEscaped` SET `\$data`='$e_data', `\$revision`=`\$revision`+1 ".
+			"$add_column_set_node WHERE `\$id`=UNHEX('$e_id')");
+		if($expected_rev === null){
+			$this->dbi->update($update);
+		}else{
+			$update .= " AND `\$revision`=$expected_rev";
+			$affected = $this->dbi->update($update);
+			if($affected === 0){
+				/** @noinspection SqlResolve */
+				$rev = $this->dbi->select("SELECT `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')")->getValue();
+				throw new UnexpectedRevision("Item '$id' expected revision $expected_rev does not match actual $rev");
+			}
+		}
 	}
 
 	/**
@@ -280,7 +320,7 @@ class MyStorage implements GenericStorage {
 		$e_data = $this->link->real_escape_string($data);
 		/** @noinspection SqlResolve */
 		$q1 = new PlainNode(0, "INSERT INTO `$this->tableNameEscaped` SET `\$id`=UNHEX('$e_id'), `\$data`='$e_data' $add_column_set_str \n".
-			"ON DUPLICATE KEY UPDATE `\$data`='$e_data' $add_column_set_str");
+			"ON DUPLICATE KEY UPDATE `\$data`='$e_data', `\$revision`=`\$revision`+1 $add_column_set_str");
 		$this->dbi->update($q1);
 	}
 
@@ -292,29 +332,12 @@ class MyStorage implements GenericStorage {
 		$add_column_set_str = [];
 		foreach($this->add_columns as $i => $x){
 			$default = $x['default'] ?? null;
-			$v = $this->extractIndexValue($arr, $this->add_columns_data[$i]['path'], $default);
+			$v = ArrayPathNavigator::getPropertyValue($arr, $this->add_columns_data[$i]['path'], $default);
 			$e_col = '`'.$this->add_columns_data[$i]['escaped'].'`';
 			$e_val = $v === null ? 'null' : "'".$this->link->real_escape_string($v)."'";
 			$add_column_set_str[] = "$e_col=$e_val";
 		}
 		return implode(', ', $add_column_set_str);
-	}
-
-	/**
-	 * @param $arr
-	 * @param array $path
-	 * @param $default
-	 * @return mixed
-	 */
-	private function extractIndexValue(array $arr, array $path, $default) {
-		$x = $arr;
-		foreach($path as $p){
-			if(!isset($x[$p])){
-				return $default;
-			}
-			$x = $x[$p];
-		}
-		return $x;
 	}
 
 	/**
@@ -395,6 +418,9 @@ class MyStorage implements GenericStorage {
 
 	private function deserialize(array $rec) {
 		$arr = json_decode($rec['$data'], true);
+		if($this->revisionPropertyPath !== null){
+			ArrayPathNavigator::setPropertyValue($arr, $this->revisionPropertyPath, $rec['$revision']);
+		}
 		return \call_user_func([$this->className, 'deserialize'], $arr);
 	}
 
@@ -634,6 +660,7 @@ class MyStorage implements GenericStorage {
 			`\$id` BINARY(16) NOT NULL,
 			`\$data` TEXT,
 			`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			`\$revision` INT NOT NULL DEFAULT 1,
 			UNIQUE (`\$id`) USING HASH
 			$add_columns
 			$add_indexes

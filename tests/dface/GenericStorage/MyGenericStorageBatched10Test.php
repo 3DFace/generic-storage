@@ -21,6 +21,7 @@ class MyGenericStorageBatched10Test extends GenericStorageTest {
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $dbi, 'test_gen_storage'))
 			->setDedicatedConnectionFactory($dbiFac)
 			->setIdPropertyName('id')
+			->setRevisionPropertyName('revision')
 			->addColumns([
 				'email' => 'VARCHAR(128)',
 				'data/a' => 'VARCHAR(128)',
@@ -30,7 +31,7 @@ class MyGenericStorageBatched10Test extends GenericStorageTest {
 			])
 			->setBatchListSize(10)
 			->setIdBatchSize(10)
-			->setTemporary(true)
+			->setTemporary(false)
 			->build();
 		$this->storage->reset();
 	}
