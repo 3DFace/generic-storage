@@ -1,9 +1,9 @@
 <?php
 /* author: Ponomarev Denis <ponomarev@gmail.com> */
 
-namespace dface\GenericStorage\Mysql;
+namespace dface\GenericStorage\Generic;
 
-class MyUniqueConstraintViolation extends MyStorageError {
+class UniqueConstraintViolation extends GenericStorageError {
 
 	/** @var string */
 	private $attribute;

@@ -3,7 +3,7 @@
 
 namespace dface\GenericStorage\Generic;
 
-class UnexpectedRevision extends \Exception implements GenericStorageError
+class UnexpectedRevision extends GenericStorageError
 {
 
 }

@@ -3,8 +3,8 @@
 
 namespace dface\GenericStorage;
 
+use dface\GenericStorage\Generic\UnderlyingStorageError;
 use dface\GenericStorage\Mysql\MyManyToMany;
-use dface\GenericStorage\Mysql\MyStorageError;
 use dface\Mysql\MysqlException;
 use dface\Mysql\MysqliConnection;
 use dface\sql\placeholders\DefaultFormatter;
@@ -52,7 +52,7 @@ class MyManyToManyTest extends GenericManyToManyTest {
 	 */
 	public function testGetAllByLeftTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		iterator_to_array($this->assoc->getAllByLeft(new TestId()));
 	}
@@ -65,7 +65,7 @@ class MyManyToManyTest extends GenericManyToManyTest {
 	 */
 	public function testGetAllByRightTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		iterator_to_array($this->assoc->getAllByRight(new TestId()));
 	}
@@ -78,7 +78,7 @@ class MyManyToManyTest extends GenericManyToManyTest {
 	 */
 	public function testAddTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		$this->assoc->add(new TestId(), new TestId());
 	}
@@ -91,7 +91,7 @@ class MyManyToManyTest extends GenericManyToManyTest {
 	 */
 	public function testRemoveTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		$this->assoc->remove(new TestId(), new TestId());
 	}
@@ -104,7 +104,7 @@ class MyManyToManyTest extends GenericManyToManyTest {
 	 */
 	public function testClearRightTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		$this->assoc->clearRight(new TestId());
 	}
@@ -117,7 +117,7 @@ class MyManyToManyTest extends GenericManyToManyTest {
 	 */
 	public function testClearLeftTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		$this->assoc->clearLeft(new TestId());
 	}

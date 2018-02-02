@@ -10,14 +10,14 @@ interface GenericStorage {
 	/**
 	 * @param $id
 	 * @return \JsonSerializable|null
-	 * @throws GenericStorageError
+	 * @throws UnderlyingStorageError
 	 */
 	public function getItem($id) : ?\JsonSerializable;
 
 	/**
 	 * @param array|\traversable $ids
 	 * @return \JsonSerializable[]|\traversable
-	 * @throws GenericStorageError
+	 * @throws UnderlyingStorageError
 	 */
 	public function getItems($ids) : \traversable;
 
@@ -25,19 +25,19 @@ interface GenericStorage {
 	 * @param $id
 	 * @param \JsonSerializable $item
 	 * @param null|int $expectedRevision
-	 * @throws GenericStorageError
+	 * @throws UnderlyingStorageError|InvalidDataType|ItemAlreadyExists|UnexpectedRevision|UniqueConstraintViolation
 	 */
 	public function saveItem($id, \JsonSerializable $item, int $expectedRevision = null) : void;
 
 	/**
 	 * @param $id
-	 * @throws GenericStorageError
+	 * @throws UnderlyingStorageError
 	 */
 	public function removeItem($id) : void;
 
 	/**
 	 * @param Criteria $criteria
-	 * @throws GenericStorageError
+	 * @throws UnderlyingStorageError
 	 */
 	public function removeByCriteria(Criteria $criteria) : void;
 
@@ -45,7 +45,7 @@ interface GenericStorage {
 	 * @param array[] $orderDef - list of pairs [`property`(string), `direction`(bool)]
 	 * @param int $limit
 	 * @return \traversable
-	 * @throws GenericStorageError
+	 * @throws UnderlyingStorageError
 	 */
 	public function listAll(array $orderDef = [], int $limit = 0) : \traversable;
 
@@ -54,7 +54,7 @@ interface GenericStorage {
 	 * @param Criteria $criteria
 	 * @param int $limit
 	 * @return \traversable
-	 * @throws GenericStorageError
+	 * @throws UnderlyingStorageError
 	 */
 	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : \traversable;
 

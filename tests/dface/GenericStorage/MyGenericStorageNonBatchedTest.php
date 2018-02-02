@@ -5,8 +5,8 @@ namespace dface\GenericStorage;
 
 use dface\criteria\IsNull;
 use dface\criteria\Reference;
+use dface\GenericStorage\Generic\UnderlyingStorageError;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
-use dface\GenericStorage\Mysql\MyStorageError;
 use dface\Mysql\MysqlException;
 use dface\Mysql\MysqliConnection;
 use dface\sql\placeholders\FormatterException;
@@ -58,7 +58,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 	 */
 	public function testListAllTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		iterator_to_array($this->storage->listAll());
 	}
@@ -71,7 +71,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 	 */
 	public function testListByCriteriaTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		iterator_to_array($this->storage->listByCriteria(new IsNull(new Reference('x'))));
 	}
@@ -84,7 +84,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 	 */
 	public function testGetItemsTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		iterator_to_array($this->storage->getItems([new TestId()]));
 	}
@@ -97,7 +97,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 	 */
 	public function testGetItemTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		$this->storage->getItem(new TestId());
 	}
@@ -110,7 +110,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 	 */
 	public function testSaveItemTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		$this->storage->saveItem($id = new TestId(), new TestEntity($id, 'name', 'none', null, 1));
 	}
@@ -123,7 +123,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 	 */
 	public function testRemoveItemTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		$this->storage->removeItem(new TestId());
 	}

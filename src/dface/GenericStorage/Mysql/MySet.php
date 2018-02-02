@@ -4,6 +4,7 @@
 namespace dface\GenericStorage\Mysql;
 
 use dface\GenericStorage\Generic\GenericSet;
+use dface\GenericStorage\Generic\UnderlyingStorageError;
 use dface\Mysql\MysqlException;
 use dface\Mysql\MysqliConnection;
 use dface\sql\placeholders\DefaultFormatter;
@@ -45,7 +46,7 @@ class MySet implements GenericSet {
 	 * @param $id
 	 * @return bool
 	 *
-	 * @throws MyStorageError
+	 * @throws UnderlyingStorageError
 	 */
 	public function contains($id) : bool {
 		try{
@@ -53,14 +54,14 @@ class MySet implements GenericSet {
 			/** @noinspection SqlResolve */
 			return $this->dbi->select(new PlainNode(0, "SELECT 1 FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')"))->getValue() !== null;
 		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new MyStorageError($e->getMessage(), 0, $e);
+			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
 		}
 	}
 
 	/**
 	 * @param $id
 	 *
-	 * @throws MyStorageError
+	 * @throws UnderlyingStorageError
 	 */
 	public function add($id) : void {
 		try{
@@ -68,14 +69,14 @@ class MySet implements GenericSet {
 			/** @noinspection SqlResolve */
 			$this->dbi->update(new PlainNode(0, "INSERT IGNORE INTO `$this->tableNameEscaped` (`\$id`) VALUES (UNHEX('$e_id'))"));
 		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new MyStorageError($e->getMessage(), 0, $e);
+			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
 		}
 	}
 
 	/**
 	 * @param $id
 	 *
-	 * @throws MyStorageError
+	 * @throws UnderlyingStorageError
 	 */
 	public function remove($id) : void {
 		try{
@@ -83,14 +84,14 @@ class MySet implements GenericSet {
 			/** @noinspection SqlResolve */
 			$this->dbi->update(new PlainNode(0, "DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')"));
 		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new MyStorageError($e->getMessage(), 0, $e);
+			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
 		}
 	}
 
 	/**
 	 * @return \traversable
 	 *
-	 * @throws MyStorageError
+	 * @throws UnderlyingStorageError
 	 */
 	public function iterate() : \traversable {
 		try{
@@ -103,7 +104,7 @@ class MySet implements GenericSet {
 				yield $x;
 			}
 		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new MyStorageError($e->getMessage(), 0, $e);
+			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
 		}
 	}
 

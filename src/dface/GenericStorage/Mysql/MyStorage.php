@@ -10,7 +10,9 @@ use dface\GenericStorage\Generic\GenericStorage;
 use dface\GenericStorage\Generic\GenericStorageError;
 use dface\GenericStorage\Generic\InvalidDataType;
 use dface\GenericStorage\Generic\ItemAlreadyExists;
+use dface\GenericStorage\Generic\UnderlyingStorageError;
 use dface\GenericStorage\Generic\UnexpectedRevision;
+use dface\GenericStorage\Generic\UniqueConstraintViolation;
 use dface\Mysql\DuplicateEntryException;
 use dface\Mysql\MysqlException;
 use dface\Mysql\MysqliConnection;
@@ -121,7 +123,7 @@ class MyStorage implements GenericStorage {
 	 * @param $id
 	 * @return \JsonSerializable|null
 	 *
-	 * @throws MyStorageError
+	 * @throws UnderlyingStorageError
 	 */
 	public function getItem($id) : ?\JsonSerializable {
 		try{
@@ -135,7 +137,7 @@ class MyStorage implements GenericStorage {
 			}
 			return null;
 		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new MyStorageError($e->getMessage(), 0, $e);
+			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
 		}
 	}
 
@@ -164,7 +166,7 @@ class MyStorage implements GenericStorage {
 				yield from $this->iterateOverDecoded($node, [], 0);
 			}
 		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new MyStorageError($e->getMessage(), 0, $e);
+			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
 		}
 	}
 
@@ -202,7 +204,7 @@ class MyStorage implements GenericStorage {
 							$this->insert($id, $data, $add_column_set_node);
 						}catch (DuplicateEntryException $e){
 							if ($e->getKey() !== '$id') {
-								throw new MyUniqueConstraintViolation($e->getKey(), $e->getEntry(), $e->getMessage(),
+								throw new UniqueConstraintViolation($e->getKey(), $e->getEntry(), $e->getMessage(),
 									$e->getCode(), $e);
 							}
 							$this->update($id, $data, $add_column_set_node, null);
@@ -213,7 +215,7 @@ class MyStorage implements GenericStorage {
 				}
 			}
 		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new MyStorageError($e->getMessage(), 0, $e);
+			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
 		}
 	}
 
@@ -226,7 +228,7 @@ class MyStorage implements GenericStorage {
 	private function serialize($id, array $arr) : ?string {
 		$data = json_encode($arr, JSON_UNESCAPED_UNICODE);
 		if(($len = \strlen($data)) > 65535){
-			throw new MyStorageError("Can't write $len bytes as $this->className#$id data at ".self::class);
+			throw new UnderlyingStorageError("Can't write $len bytes as $this->className#$id data at ".self::class);
 		}
 		return $data;
 	}
@@ -239,7 +241,7 @@ class MyStorage implements GenericStorage {
 		try{
 			$this->delete($id);
 		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new MyStorageError($e->getMessage(), 0, $e);
+			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
 		}
 	}
 
@@ -253,7 +255,7 @@ class MyStorage implements GenericStorage {
 			$this->dbi->query(new PlainNode(0,
 				"DELETE FROM `$this->tableNameEscaped` WHERE ".$this->makeWhere($criteria)));
 		}catch (MySqlException|FormatterException|ParserException $e){
-			throw new MyStorageError('MyStorage removeByCriteria query failed', 0, $e);
+			throw new UnderlyingStorageError('MyStorage removeByCriteria query failed', 0, $e);
 		}
 	}
 
@@ -351,7 +353,7 @@ class MyStorage implements GenericStorage {
 			$all = "$this->selectAllFromTable WHERE 1";
 			yield from $this->iterateOverDecoded($all, $orderDef, $limit);
 		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new MyStorageError($e->getMessage(), 0, $e);
+			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
 		}
 	}
 
@@ -367,7 +369,7 @@ class MyStorage implements GenericStorage {
 			$q = "$this->selectAllFromTable WHERE ".$this->makeWhere($criteria);
 			yield from $this->iterateOverDecoded($q, $orderDef, $limit);
 		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new MyStorageError($e->getMessage(), 0, $e);
+			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
 		}
 	}
 

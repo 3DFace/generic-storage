@@ -3,7 +3,7 @@
 
 namespace dface\GenericStorage\Generic;
 
-interface GenericStorageError extends \Throwable
+abstract class GenericStorageError extends \Exception
 {
 
 }

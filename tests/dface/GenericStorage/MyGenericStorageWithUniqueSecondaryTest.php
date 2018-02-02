@@ -3,10 +3,10 @@
 
 namespace dface\GenericStorage;
 
+use dface\GenericStorage\Generic\UnderlyingStorageError;
+use dface\GenericStorage\Generic\UniqueConstraintViolation;
 use dface\GenericStorage\Mysql\MyStorage;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
-use dface\GenericStorage\Mysql\MyStorageError;
-use dface\GenericStorage\Mysql\MyUniqueConstraintViolation;
 use dface\Mysql\MysqlException;
 use dface\sql\placeholders\FormatterException;
 use dface\sql\placeholders\ParserException;
@@ -68,7 +68,7 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 		$entity1 = new TestEntity($uid1, 'Test User', 'user@test.php', new TestData('asd', 10), 1);
 		$entity2 = new TestEntity($uid2, 'Test User', 'user@test.php', new TestData('asd', 10), 1);
 		$s->saveItem($uid1, $entity1);
-		$this->expectException(MyUniqueConstraintViolation::class);
+		$this->expectException(UniqueConstraintViolation::class);
 		$s->saveItem($uid2, $entity2);
 	}
 
@@ -80,7 +80,7 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 		$uid1 = new TestId();
 		$data = new TestData(str_repeat('x', 65535), 10);
 		$entity1 = new TestEntity($uid1, 'Test User', 'user@test.php', $data, 1);
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		$s->saveItem($uid1, $entity1);
 	}
@@ -88,7 +88,6 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 	/**
 	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MyStorageError
 	 * @throws MysqlException
 	 * @throws ParserException
 	 */

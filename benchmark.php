@@ -17,6 +17,7 @@ $dbi = new MysqliConnection($link, $parser, $formatter);
 
 $storage = (new MyStorageBuilder(TestEntity::class, $link, 'test_gen_storage'))
 	->setIdPropertyName('id')
+	->setRevisionPropertyName('revision')
 	->addColumns([
 		'email' => 'VARCHAR(128)',
 		'data/a' => 'VARCHAR(128)',
@@ -36,11 +37,14 @@ $limit = 10000;
 $data = [];
 for($i=0; $i<$limit; $i++){
 	$id = new \dface\GenericStorage\TestId();
-	$e = new TestEntity($id, 'name-'.$i, 'name-'.$i.'@benchmark', new \dface\GenericStorage\TestData('asd', $i));
+	$e = new TestEntity($id, 'name-'.$i, 'name-'.$i.'@benchmark', new \dface\GenericStorage\TestData('asd', $i), 1);
 	$data[] = $e;
 }
 
 $started = microtime(true);
+
+/** @noinspection PhpUnhandledExceptionInspection */
+$dbi->begin();
 
 foreach($data as $e){
 	$id = $e->getId();
@@ -49,5 +53,8 @@ foreach($data as $e){
 	/** @noinspection PhpUnhandledExceptionInspection */
 	$storage->getItem($id);
 }
+
+/** @noinspection PhpUnhandledExceptionInspection */
+$dbi->rollback();
 
 echo (microtime(true) - $started);

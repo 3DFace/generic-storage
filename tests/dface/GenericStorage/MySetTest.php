@@ -3,8 +3,8 @@
 
 namespace dface\GenericStorage;
 
+use dface\GenericStorage\Generic\UnderlyingStorageError;
 use dface\GenericStorage\Mysql\MySet;
-use dface\GenericStorage\Mysql\MyStorageError;
 use dface\Mysql\MysqlException;
 use dface\Mysql\MysqliConnection;
 use dface\sql\placeholders\FormatterException;
@@ -48,7 +48,7 @@ class MySetTest extends GenericSetTest {
 	 */
 	public function testIterateTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		iterator_to_array($this->set->iterate());
 	}
@@ -61,7 +61,7 @@ class MySetTest extends GenericSetTest {
 	 */
 	public function testContainsTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		$this->set->contains(new TestId());
 	}
@@ -74,7 +74,7 @@ class MySetTest extends GenericSetTest {
 	 */
 	public function testAddTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		$this->set->add(new TestId());
 	}
@@ -87,7 +87,7 @@ class MySetTest extends GenericSetTest {
 	 */
 	public function testRemoveTroubles(){
 		$this->broke();
-		$this->expectException(MyStorageError::class);
+		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
 		$this->set->remove(new TestId());
 	}
