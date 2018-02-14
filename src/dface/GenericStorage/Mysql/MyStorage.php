@@ -37,6 +37,8 @@ class MyStorage implements GenericStorage {
 	/** @var string */
 	private $revisionPropertyPath;
 	/** @var string[] */
+	private $add_generated_columns;
+	/** @var string[] */
 	private $add_columns;
 	/** @var string[] */
 	private $add_columns_data;
@@ -56,6 +58,10 @@ class MyStorage implements GenericStorage {
 	private $batchListSize;
 	/** @var int */
 	private $idBatchSize;
+	/** @var string */
+	private $dataColumnDef;
+	/** @var int */
+	private $dataMaxSize;
 
 	/**
 	 * @param string $className
@@ -64,12 +70,15 @@ class MyStorage implements GenericStorage {
 	 * @param $dedicatedLinkFactory
 	 * @param string|null $idPropertyName
 	 * @param string|null $revisionPropertyName
+	 * @param array $add_generated_columns
 	 * @param array $add_columns
 	 * @param array $add_indexes
 	 * @param bool $has_unique_secondary
 	 * @param bool $temporary
 	 * @param int $batch_list_size
 	 * @param int $id_batch_size
+	 * @param string $dataColumnDef
+	 * @param int $dataMaxSize
 	 * @throws \InvalidArgumentException
 	 */
 	public function __construct(
@@ -79,12 +88,15 @@ class MyStorage implements GenericStorage {
 		$dedicatedLinkFactory,
 		string $idPropertyName = null,
 		string $revisionPropertyName = null,
+		array $add_generated_columns = [],
 		array $add_columns = [],
 		array $add_indexes = [],
 		bool $has_unique_secondary = false,
 		bool $temporary = false,
 		int $batch_list_size = 10000,
-		int $id_batch_size = 500
+		int $id_batch_size = 500,
+		string $dataColumnDef = 'TEXT',
+		int $dataMaxSize = 65535
 	) {
 		$this->className = $className;
 		$this->dbi = new MysqliConnection($link, new DefaultParser(), new DefaultFormatter());
@@ -94,6 +106,7 @@ class MyStorage implements GenericStorage {
 		if($revisionPropertyName !== null){
 			$this->revisionPropertyPath = explode('/', $revisionPropertyName);
 		}
+		$this->add_generated_columns = $add_generated_columns;
 		$this->add_columns = $add_columns;
 		$this->add_columns_data = [];
 		foreach($this->add_columns as $i => $x){
@@ -117,6 +130,8 @@ class MyStorage implements GenericStorage {
 			throw new \InvalidArgumentException("Id batch size must be >0, $id_batch_size given");
 		}
 		$this->idBatchSize = $id_batch_size;
+		$this->dataMaxSize = $dataMaxSize;
+		$this->dataColumnDef = $dataColumnDef;
 	}
 
 	/**
@@ -227,7 +242,7 @@ class MyStorage implements GenericStorage {
 	 */
 	private function serialize($id, array $arr) : ?string {
 		$data = json_encode($arr, JSON_UNESCAPED_UNICODE);
-		if(($len = \strlen($data)) > 65535){
+		if(($len = \strlen($data)) > $this->dataMaxSize){
 			throw new UnderlyingStorageError("Can't write $len bytes as $this->className#$id data at ".self::class);
 		}
 		return $data;
@@ -654,17 +669,19 @@ class MyStorage implements GenericStorage {
 			return $this->dbi->build("{i} $type", $i);
 		}, $this->add_columns, array_keys($this->add_columns));
 		$add_columns = $add_columns ? ','.implode("\n\t\t\t,", $add_columns) : '';
+		$add_generated_columns = $this->add_generated_columns ? ','.implode("\n\t\t\t,", $this->add_generated_columns) : '';
 		$add_indexes = $this->add_indexes ? ','.implode("\n\t\t\t,", $this->add_indexes) : '';
 		$this->dbi->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
 		$tmp = $this->temporary ? 'TEMPORARY' : '';
 		$this->dbi->query("CREATE $tmp TABLE `$this->tableNameEscaped` (
 			`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 			`\$id` BINARY(16) NOT NULL,
-			`\$data` TEXT,
+			`\$data` {$this->dataColumnDef},
 			`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			`\$revision` INT NOT NULL DEFAULT 1,
-			UNIQUE (`\$id`) USING HASH
+			UNIQUE (`\$id`)
 			$add_columns
+			$add_generated_columns
 			$add_indexes
 		) ENGINE=InnoDB");
 	}

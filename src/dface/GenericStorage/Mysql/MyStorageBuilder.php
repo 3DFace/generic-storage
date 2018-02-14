@@ -11,11 +11,12 @@ class MyStorageBuilder {
 	private $link;
 	/** @var string */
 	private $tableName;
-
 	/** @var string */
 	private $idPropertyName;
 	/** @var string */
 	private $revisionPropertyName;
+	/** @var string[] */
+	private $add_generated_columns = [];
 	/** @var string[] */
 	private $add_columns = [];
 	/** @var string[] */
@@ -30,6 +31,10 @@ class MyStorageBuilder {
 	private $batchListSize = 10000;
 	/** @var int */
 	private $idBatchSize = 500;
+	/** @var string */
+	private $dataColumnDef = 'TEXT';
+	/** @var int */
+	private $dataMaxSize = 65535;
 
 	public function __construct($className, \mysqli $link, $tableName) {
 		$this->className = $className;
@@ -49,6 +54,11 @@ class MyStorageBuilder {
 
 	public function addColumns(array $add_columns) : MyStorageBuilder {
 		$this->add_columns = $add_columns;
+		return $this;
+	}
+
+	public function addGeneratedColumns(array $add_generated_columns) : MyStorageBuilder {
+		$this->add_generated_columns = $add_generated_columns;
 		return $this;
 	}
 
@@ -82,6 +92,16 @@ class MyStorageBuilder {
 		return $this;
 	}
 
+	public function setDataColumnDef(string $dataColumnDef) : MyStorageBuilder {
+		$this->dataColumnDef = $dataColumnDef;
+		return $this;
+	}
+
+	public function setDataMaxSize(int $dataMaxSize) : MyStorageBuilder {
+		$this->dataMaxSize = $dataMaxSize;
+		return $this;
+	}
+
 	/**
 	 * @return MyStorage
 	 * @throws \InvalidArgumentException
@@ -94,12 +114,15 @@ class MyStorageBuilder {
 			$this->dedicatedConnectionFactory,
 			$this->idPropertyName,
 			$this->revisionPropertyName,
+			$this->add_generated_columns,
 			$this->add_columns,
 			$this->add_indexes,
 			$this->has_unique_secondary,
 			$this->temporary,
 			$this->batchListSize,
-			$this->idBatchSize);
+			$this->idBatchSize,
+			$this->dataColumnDef,
+			$this->dataMaxSize);
 	}
 
 }
