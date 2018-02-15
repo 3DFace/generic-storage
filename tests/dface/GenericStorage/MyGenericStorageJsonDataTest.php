@@ -37,6 +37,7 @@ class MyGenericStorageJsonDataTest extends GenericStorageTest {
 			->setTemporary(false)
 			->setDataColumnDef('JSON')
 			->setDataMaxSize(65535)
+			->setCompressed(true)
 			->build();
 		$this->storage->reset();
 	}

@@ -35,6 +35,8 @@ class MyStorageBuilder {
 	private $dataColumnDef = 'TEXT';
 	/** @var int */
 	private $dataMaxSize = 65535;
+	/** @var bool */
+	private $compressed = true;
 
 	public function __construct($className, \mysqli $link, $tableName) {
 		$this->className = $className;
@@ -102,6 +104,11 @@ class MyStorageBuilder {
 		return $this;
 	}
 
+	public function setCompressed(bool $compressed) : MyStorageBuilder {
+		$this->compressed = $compressed;
+		return $this;
+	}
+
 	/**
 	 * @return MyStorage
 	 * @throws \InvalidArgumentException
@@ -122,7 +129,8 @@ class MyStorageBuilder {
 			$this->batchListSize,
 			$this->idBatchSize,
 			$this->dataColumnDef,
-			$this->dataMaxSize);
+			$this->dataMaxSize,
+			$this->compressed);
 	}
 
 }

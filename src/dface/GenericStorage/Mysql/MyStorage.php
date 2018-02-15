@@ -62,6 +62,8 @@ class MyStorage implements GenericStorage {
 	private $dataColumnDef;
 	/** @var int */
 	private $dataMaxSize;
+	/** @var bool */
+	private $compressed;
 
 	/**
 	 * @param string $className
@@ -79,6 +81,7 @@ class MyStorage implements GenericStorage {
 	 * @param int $id_batch_size
 	 * @param string $dataColumnDef
 	 * @param int $dataMaxSize
+	 * @param bool $compressed
 	 * @throws \InvalidArgumentException
 	 */
 	public function __construct(
@@ -96,7 +99,8 @@ class MyStorage implements GenericStorage {
 		int $batch_list_size = 10000,
 		int $id_batch_size = 500,
 		string $dataColumnDef = 'TEXT',
-		int $dataMaxSize = 65535
+		int $dataMaxSize = 65535,
+		bool $compressed = true
 	) {
 		$this->className = $className;
 		$this->dbi = new MysqliConnection($link, new DefaultParser(), new DefaultFormatter());
@@ -132,6 +136,7 @@ class MyStorage implements GenericStorage {
 		$this->idBatchSize = $id_batch_size;
 		$this->dataMaxSize = $dataMaxSize;
 		$this->dataColumnDef = $dataColumnDef;
+		$this->compressed = $compressed;
 	}
 
 	/**
@@ -683,7 +688,7 @@ class MyStorage implements GenericStorage {
 			$add_columns
 			$add_generated_columns
 			$add_indexes
-		) ENGINE=InnoDB");
+		) ENGINE=InnoDB".(!$this->temporary && $this->compressed? ' ROW_FORMAT=COMPRESSED' : ''));
 	}
 
 }
