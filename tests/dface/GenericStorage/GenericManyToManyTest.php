@@ -29,6 +29,23 @@ abstract class GenericManyToManyTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
+	public function testHas() : void {
+		$l = new TestId();
+		$r = new TestId();
+		$x = new TestId();
+
+		$this->assertFalse($this->assoc->has($l, $r));
+
+		$this->assoc->add($l, $r);
+
+		$this->assertTrue($this->assoc->has($l, $r));
+		$this->assertFalse($this->assoc->has($l, $x));
+		$this->assertFalse($this->assoc->has($x, $r));
+	}
+
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testManyToOne() : void {
 		$l1 = new TestId();
 		$l2 = new TestId();

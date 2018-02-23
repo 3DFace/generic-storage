@@ -24,6 +24,15 @@ interface GenericManyToMany {
 	/**
 	 * @param $left
 	 * @param $right
+	 * @return bool
+	 * @throws GenericStorageError
+	 */
+	public function has($left, $right) : bool;
+
+
+	/**
+	 * @param $left
+	 * @param $right
 	 *
 	 * @throws GenericStorageError
 	 */

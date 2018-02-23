@@ -101,11 +101,33 @@ class MyManyToMany implements GenericManyToMany {
 		$e_by_val = $this->link->real_escape_string($byValue);
 		/** @noinspection SqlResolve */
 		$q1 = new PlainNode(0, "SELECT HEX(`$e_data_col`) `$e_data_col` FROM `$this->tableNameEscaped` WHERE `$e_by_col`=UNHEX('$e_by_val')");
-		$it = $this->dbi->select($q1);
+		$it = $this->dbi->query($q1);
 		foreach($it as $rec){
 			/** @noinspection PhpUndefinedMethodInspection */
 			$x = $dataClassName::deserialize($rec[$dataColumn]);
 			yield $x;
+		}
+	}
+
+	/**
+	 * @param $left
+	 * @param $right
+	 * @return bool
+	 * @throws UnderlyingStorageError
+	 */
+	public function has($left, $right) : bool
+	{
+		try{
+			$e_left_col = str_replace('`', '``', $this->leftColumnName);
+			$e_right_col = str_replace('`', '``', $this->rightColumnName);
+			$e_left_val = $this->link->real_escape_string($left);
+			$e_right_val = $this->link->real_escape_string($right);
+			/** @noinspection SqlResolve */
+			$q1 = new PlainNode(0, "SELECT 1 FROM `$this->tableNameEscaped`
+				WHERE `$e_left_col`=UNHEX('$e_left_val') AND `$e_right_col`=UNHEX('$e_right_val')");
+			return $this->dbi->select($q1)->getValue() !== null;
+		}catch (MysqlException|FormatterException|ParserException $e){
+			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
 		}
 	}
 

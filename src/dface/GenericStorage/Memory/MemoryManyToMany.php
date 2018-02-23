@@ -24,6 +24,11 @@ class MemoryManyToMany implements GenericManyToMany {
 		}
 	}
 
+	public function has($left, $right) : bool
+	{
+		return isset($this->left[(string)$left][(string)$right]);
+	}
+
 	public function add($left, $right) : void {
 		$this->left[(string)$left][(string)$right] = $right;
 		$this->right[(string)$right][(string)$left] = $left;
