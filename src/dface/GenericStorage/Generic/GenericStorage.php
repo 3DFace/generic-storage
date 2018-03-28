@@ -42,6 +42,11 @@ interface GenericStorage {
 	public function removeByCriteria(Criteria $criteria) : void;
 
 	/**
+	 * @throws UnderlyingStorageError
+	 */
+	public function clear() : void;
+
+	/**
 	 * @param array[] $orderDef - list of pairs [`property`(string), `direction`(bool)]
 	 * @param int $limit
 	 * @return \traversable

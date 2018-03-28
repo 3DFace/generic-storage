@@ -82,10 +82,25 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
+	public function testCleared() : void {
+		$s = $this->storage;
+		$uid1 = new TestId();
+		$uid2 = new TestId();
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'user1@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'user2@test.php', null, 1);
+		$s->saveItem($uid1, $entity1);
+		$s->saveItem($uid2, $entity2);
+
+		$s->clear();
+
+		$loaded_arr = iterator_to_array($s->listAll());
+		$this->assertEmpty($loaded_arr);
+	}
+
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
 	public function testOverwrite() : void {
-		if(static::class === MyGenericStorageWithUniqueSecondaryTest::class){
-			echo 1;
-		}
 		$s = $this->storage;
 		$uid = new TestId();
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
@@ -100,9 +115,6 @@ abstract class GenericStorageTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testOverwriteRevisionGrows() : void {
-		if(static::class === MyGenericStorageWithUniqueSecondaryTest::class){
-			echo 1;
-		}
 		$s = $this->storage;
 		$uid = new TestId();
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
@@ -118,9 +130,6 @@ abstract class GenericStorageTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testRemoveResetRevision() : void {
-		if(static::class === MyGenericStorageWithUniqueSecondaryTest::class){
-			echo 1;
-		}
 		$s = $this->storage;
 		$uid = new TestId();
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
@@ -136,9 +145,6 @@ abstract class GenericStorageTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testExpectedNew() : void {
-		if(static::class === MyGenericStorageWithUniqueSecondaryTest::class){
-			echo 1;
-		}
 		$s = $this->storage;
 		$uid = new TestId();
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
@@ -152,9 +158,6 @@ abstract class GenericStorageTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testExpected1() : void {
-		if(static::class === MyGenericStorageWithUniqueSecondaryTest::class){
-			echo 1;
-		}
 		$s = $this->storage;
 		$uid = new TestId();
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);

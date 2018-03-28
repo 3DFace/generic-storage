@@ -105,6 +105,11 @@ class MemoryStorage implements GenericStorage
 		}
 	}
 
+	public function clear() : void
+	{
+		$this->storage = [];
+	}
+
 	public function listAll(array $orderDef = [], int $limit = 0) : \traversable
 	{
 		$values = [];

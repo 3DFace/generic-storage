@@ -280,6 +280,19 @@ class MyStorage implements GenericStorage {
 	}
 
 	/**
+	 * @throws UnderlyingStorageError
+	 */
+	public function clear() : void
+	{
+		try{
+			/** @noinspection SqlResolve */
+			$this->dbi->query(new PlainNode(0, "DELETE FROM `$this->tableNameEscaped`"));
+		}catch (MySqlException|FormatterException|ParserException $e){
+			throw new UnderlyingStorageError('MyStorage clear query failed', 0, $e);
+		}
+	}
+
+	/**
 	 * @param string $id
 	 * @param string $data
 	 * @param string $add_column_set_node
