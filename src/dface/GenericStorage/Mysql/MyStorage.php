@@ -215,24 +215,20 @@ class MyStorage implements GenericStorage {
 				}catch (DuplicateEntryException $e){
 					throw new ItemAlreadyExists("Item '$id' already exists");
 				}
-			}else {
-				if($expectedRevision > 0){
-					$this->update($id, $data, $add_column_set_node, $expectedRevision);
-				}else {
-					if ($this->has_unique_secondary) {
-						try{
-							$this->insert($id, $data, $add_column_set_node);
-						}catch (DuplicateEntryException $e){
-							if ($e->getKey() !== '$id') {
-								throw new UniqueConstraintViolation($e->getKey(), $e->getEntry(), $e->getMessage(),
-									$e->getCode(), $e);
-							}
-							$this->update($id, $data, $add_column_set_node, null);
-						}
-					}else {
-						$this->insertOnDupUpdate($id, $data, $add_column_set_node);
+			}elseif($expectedRevision > 0){
+				$this->update($id, $data, $add_column_set_node, $expectedRevision);
+			}elseif ($this->has_unique_secondary) {
+				try{
+					$this->insert($id, $data, $add_column_set_node);
+				}catch (DuplicateEntryException $e){
+					if ($e->getKey() !== '$id') {
+						throw new UniqueConstraintViolation($e->getKey(), $e->getEntry(), $e->getMessage(),
+							$e->getCode(), $e);
 					}
+					$this->update($id, $data, $add_column_set_node, null);
 				}
+			}else {
+				$this->insertOnDupUpdate($id, $data, $add_column_set_node);
 			}
 		}catch(MysqlException|FormatterException|ParserException $e){
 			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
@@ -491,9 +487,11 @@ class MyStorage implements GenericStorage {
 	 * @throws MysqlException|FormatterException|ParserException
 	 */
 	private function iterateOverDbi(MysqliConnection $dbi, string $baseQuery, array $orderDef, int $limit) : \Generator {
+		$use_batches = $this->batchListSize > 0;
 		if($orderDef){
 			if(\count($orderDef) === 1 && $orderDef[0][0] === $this->idPropertyName){
-				if($this->batchListSize > 0){
+
+				if($use_batches){
 					if($orderDef[0][1]){
 						yield from $this->iterateOverDbiBatchedBySeqId($dbi, $baseQuery, $limit);
 					}else{
@@ -514,7 +512,7 @@ class MyStorage implements GenericStorage {
 					$baseQuery,
 					$this->buildOrderBy($orderDef),
 				];
-				if($this->batchListSize > 0){
+				if($use_batches){
 					yield from $this->iterateOverDbiBatchedByLimit($dbi, implode(' ', $nodes), $limit);
 				}else{
 					if($limit){
@@ -523,16 +521,12 @@ class MyStorage implements GenericStorage {
 					yield from $this->iterate($dbi, implode(' ', $nodes));
 				}
 			}
+		}elseif($use_batches){
+			yield from $this->iterateOverDbiBatchedBySeqId($dbi, $baseQuery, $limit);
+		}elseif($limit){
+			yield from $this->iterate($dbi, "$baseQuery LIMIT $limit");
 		}else{
-			if($this->batchListSize > 0){
-				yield from $this->iterateOverDbiBatchedBySeqId($dbi, $baseQuery, $limit);
-			}else{
-				if($limit){
-					yield from $this->iterate($dbi, "$baseQuery LIMIT $limit");
-				}else{
-					yield from $this->iterate($dbi, $baseQuery);
-				}
-			}
+			yield from $this->iterate($dbi, $baseQuery);
 		}
 	}
 

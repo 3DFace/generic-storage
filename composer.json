@@ -11,7 +11,9 @@
 	"require": {
 		"php": ">=7.1",
 		"dface/criteria": "dev-master",
-		"dface/mysql": "dev-master"
+		"dface/mysql": "dev-master",
+		"ext-mysqli": "*",
+		"ext-json": "*"
 	},
 	"require-dev": {
 		"phpunit/phpunit": "^6.4"
