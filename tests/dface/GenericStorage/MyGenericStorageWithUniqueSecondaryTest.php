@@ -7,22 +7,14 @@ use dface\GenericStorage\Generic\UnderlyingStorageError;
 use dface\GenericStorage\Generic\UniqueConstraintViolation;
 use dface\GenericStorage\Mysql\MyStorage;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
-use dface\Mysql\MysqlException;
-use dface\sql\placeholders\FormatterException;
-use dface\sql\placeholders\ParserException;
 
-class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
+class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest
+{
 
-	/**
-	 * @throws MysqlException
-	 * @throws FormatterException
-	 * @throws ParserException
-	 */
-	protected function setUp() {
-		$dbi = DbiFactory::getConnection();
-		$dbiFac = DbiFactory::getConnectionFactory();
-		$this->storage = (new MyStorageBuilder(TestEntity::class, $dbi, 'test_gen_storage'))
-			->setDedicatedConnectionFactory($dbiFac)
+	protected function setUp()
+	{
+		$linkProvider = DbiFactory::getSameLinkProvider();
+		$this->storage = (new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
 			->setIdPropertyName('id')
 			->setRevisionPropertyName('revision')
 			->addColumns([
@@ -42,18 +34,20 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 		$this->storage->reset();
 	}
 
-	public function testBatchListSizeProtected(){
-		$dbi = DbiFactory::getConnection();
+	public function testBatchListSizeProtected() : void
+	{
+		$linkProvider = DbiFactory::getSameLinkProvider();
 		$this->expectException(\InvalidArgumentException::class);
-		(new MyStorageBuilder(TestEntity::class, $dbi, 'test_gen_storage'))
+		(new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
 			->setBatchListSize(-1)
 			->build();
 	}
 
-	public function testIdBatchSizeProtected(){
-		$dbi = DbiFactory::getConnection();
+	public function testIdBatchSizeProtected() : void
+	{
+		$linkProvider = DbiFactory::getSameLinkProvider();
 		$this->expectException(\InvalidArgumentException::class);
-		(new MyStorageBuilder(TestEntity::class, $dbi, 'test_gen_storage'))
+		(new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
 			->setIdBatchSize(-1)
 			->build();
 	}
@@ -61,7 +55,8 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testUniqueConstraint() : void {
+	public function testUniqueConstraint() : void
+	{
 		$s = $this->storage;
 		$uid1 = new TestId();
 		$uid2 = new TestId();
@@ -75,7 +70,8 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testDataSizeLimited() : void {
+	public function testDataSizeLimited() : void
+	{
 		$s = $this->storage;
 		$uid1 = new TestId();
 		$data = new TestData(str_repeat('x', 65535), 10);
@@ -85,13 +81,8 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest {
 		$s->saveItem($uid1, $entity1);
 	}
 
-	/**
-	 * @throws FormatterException
-	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
-	 */
-	public function testUpdateColumns() : void {
+	public function testUpdateColumns() : void
+	{
 		/** @var MyStorage $s */
 		$s = $this->storage;
 		$uid1 = new TestId();

@@ -1,6 +1,7 @@
 <?php
 /* author: Ponomarev Denis <ponomarev@gmail.com> */
 
+use dface\GenericStorage\MySameLinkProvider;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
 use dface\GenericStorage\TestEntity;
 use dface\Mysql\MysqliConnection;
@@ -15,7 +16,9 @@ $parser = new DefaultParser();
 $formatter = new DefaultFormatter();
 $dbi = new MysqliConnection($link, $parser, $formatter);
 
-$storage = (new MyStorageBuilder(TestEntity::class, $link, 'test_gen_storage'))
+$provider = new MySameLinkProvider($link);
+
+$storage = (new MyStorageBuilder(TestEntity::class, $provider, 'test_gen_storage'))
 	->setIdPropertyName('id')
 	->setRevisionPropertyName('revision')
 	->addColumns([

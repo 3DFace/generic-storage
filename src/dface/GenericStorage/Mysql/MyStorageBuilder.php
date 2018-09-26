@@ -7,8 +7,8 @@ class MyStorageBuilder {
 
 	/** @var string */
 	private $className;
-	/** @var \mysqli */
-	private $link;
+	/** @var MyLinkProvider */
+	private $linkProvider;
 	/** @var string */
 	private $tableName;
 	/** @var string */
@@ -23,8 +23,6 @@ class MyStorageBuilder {
 	private $add_indexes = [];
 	/** @var bool */
 	private $has_unique_secondary = false;
-	/** @var callable */
-	private $dedicatedConnectionFactory;
 	/** @var bool */
 	private $temporary = false;
 	/** @var int */
@@ -38,9 +36,9 @@ class MyStorageBuilder {
 	/** @var bool */
 	private $compressed = true;
 
-	public function __construct($className, \mysqli $link, $tableName) {
+	public function __construct($className, MyLinkProvider $link, $tableName) {
 		$this->className = $className;
-		$this->link = $link;
+		$this->linkProvider = $link;
 		$this->tableName = $tableName;
 	}
 
@@ -71,11 +69,6 @@ class MyStorageBuilder {
 
 	public function setHasUniqueSecondary(bool $has_unique_secondary) : MyStorageBuilder {
 		$this->has_unique_secondary = $has_unique_secondary;
-		return $this;
-	}
-
-	public function setDedicatedConnectionFactory($dedicatedConnectionFactory) : MyStorageBuilder {
-		$this->dedicatedConnectionFactory = $dedicatedConnectionFactory;
 		return $this;
 	}
 
@@ -116,9 +109,8 @@ class MyStorageBuilder {
 	public function build() : MyStorage {
 		return new MyStorage(
 			$this->className,
-			$this->link,
+			$this->linkProvider,
 			$this->tableName,
-			$this->dedicatedConnectionFactory,
 			$this->idPropertyName,
 			$this->revisionPropertyName,
 			$this->add_generated_columns,

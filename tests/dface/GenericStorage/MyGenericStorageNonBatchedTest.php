@@ -7,24 +7,17 @@ use dface\criteria\IsNull;
 use dface\criteria\Reference;
 use dface\GenericStorage\Generic\UnderlyingStorageError;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
-use dface\Mysql\MysqlException;
-use dface\Mysql\MysqliConnection;
-use dface\sql\placeholders\FormatterException;
-use dface\sql\placeholders\ParserException;
 
-class MyGenericStorageNonBatchedTest extends GenericStorageTest {
+class MyGenericStorageNonBatchedTest extends GenericStorageTest
+{
 
-	/** @var MysqliConnection */
-	protected $dbi;
+	/** @var MySameLinkProvider */
+	protected $linkProvider;
 
-	/**
-	 * @throws MysqlException
-	 * @throws FormatterException
-	 * @throws ParserException
-	 */
-	protected function setUp() {
-		$this->dbi = DbiFactory::getConnection();
-		$this->storage = (new MyStorageBuilder(TestEntity::class, $this->dbi, 'test_gen_storage'))
+	protected function setUp()
+	{
+		$this->linkProvider = DbiFactory::getSameLinkProvider();
+		$this->storage = (new MyStorageBuilder(TestEntity::class, $this->linkProvider, 'test_gen_storage'))
 			->setIdPropertyName('id')
 			->setRevisionPropertyName('revision')
 			->addColumns([
@@ -40,23 +33,17 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 		$this->storage->reset();
 	}
 
-	/**
-	 * @throws FormatterException
-	 * @throws MySqlException
-	 * @throws ParserException
-	 */
-	private function broke(){
+	private function broke() : void
+	{
 		/** @noinspection SqlResolve */
-		$this->dbi->query('DROP TABLE test_gen_storage');
+		$this->linkProvider->getLink()->query('DROP TABLE test_gen_storage');
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testListAllTroubles(){
+	public function testListAllTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -64,12 +51,10 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testListByCriteriaTroubles(){
+	public function testListByCriteriaTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -77,12 +62,10 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testGetItemsTroubles(){
+	public function testGetItemsTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -90,12 +73,10 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testGetItemTroubles(){
+	public function testGetItemTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -103,12 +84,10 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testSaveItemTroubles(){
+	public function testSaveItemTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -116,12 +95,10 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testRemoveItemTroubles(){
+	public function testRemoveItemTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
