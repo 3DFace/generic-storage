@@ -154,7 +154,7 @@ class MyStorage implements GenericStorage
 					$e_id = $link->real_escape_string($id);
 					/** @noinspection SqlResolve */
 					$it1 = $link->query("SELECT `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
-					if($it1 === false){
+					if ($it1 === false) {
 						throw new UnderlyingStorageError($link->error);
 					}
 					/** @noinspection LoopWhichDoesNotLoopInspection */
@@ -209,38 +209,35 @@ class MyStorage implements GenericStorage
 			if (!$item instanceof $this->className) {
 				throw new InvalidDataType("Stored item must be instance of $this->className");
 			}
-			try{
-				$arr = $item->jsonSerialize();
-				if ($this->revisionPropertyPath !== null) {
-					ArrayPathNavigator::unsetProperty($arr, $this->revisionPropertyPath);
-				}
-				$add_column_set_node = $this->createUpdateColumnsFragment($link, $arr);
-				$add_column_set_node = $add_column_set_node ? (', '.$add_column_set_node) : '';
-				$data = $this->serialize($id, $arr);
 
-				if ($expectedRevision === 0) {
-					try{
-						$this->insert($link, $id, $data, $add_column_set_node);
-					}catch (DuplicateEntryException $e){
-						throw new ItemAlreadyExists("Item '$id' already exists");
-					}
-				}elseif ($expectedRevision > 0) {
-					$this->update($link, $id, $data, $add_column_set_node, $expectedRevision);
-				}elseif ($this->has_unique_secondary) {
-					try{
-						$this->insert($link, $id, $data, $add_column_set_node);
-					}catch (DuplicateEntryException $e){
-						if ($e->getKey() !== '$id') {
-							throw new UniqueConstraintViolation($e->getKey(), $e->getEntry(), $e->getMessage(),
-								$e->getCode(), $e);
-						}
-						$this->update($link, $id, $data, $add_column_set_node, null);
-					}
-				}else {
-					$this->insertOnDupUpdate($link, $id, $data, $add_column_set_node);
+			$arr = $item->jsonSerialize();
+			if ($this->revisionPropertyPath !== null) {
+				ArrayPathNavigator::unsetProperty($arr, $this->revisionPropertyPath);
+			}
+			$add_column_set_node = $this->createUpdateColumnsFragment($link, $arr);
+			$add_column_set_node = $add_column_set_node ? (', '.$add_column_set_node) : '';
+			$data = $this->serialize($id, $arr);
+
+			if ($expectedRevision === 0) {
+				try{
+					$this->insert($link, $id, $data, $add_column_set_node);
+				}catch (DuplicateEntryException $e){
+					throw new ItemAlreadyExists("Item '$id' already exists");
 				}
-			}catch (MysqlException|FormatterException|ParserException $e){
-				throw new UnderlyingStorageError($e->getMessage(), 0, $e);
+			}elseif ($expectedRevision > 0) {
+				$this->update($link, $id, $data, $add_column_set_node, $expectedRevision);
+			}elseif ($this->has_unique_secondary) {
+				try{
+					$this->insert($link, $id, $data, $add_column_set_node);
+				}catch (DuplicateEntryException $e){
+					if ($e->getKey() !== '$id') {
+						throw new UniqueConstraintViolation($e->getKey(), $e->getEntry(), $e->getMessage(),
+							$e->getCode(), $e);
+					}
+					$this->update($link, $id, $data, $add_column_set_node, null);
+				}
+			}else {
+				$this->insertOnDupUpdate($link, $id, $data, $add_column_set_node);
 			}
 		});
 	}
@@ -266,10 +263,11 @@ class MyStorage implements GenericStorage
 	public function removeItem($id) : void
 	{
 		$this->linkProvider->withLink(function (\mysqli $link) use ($id) {
-			try{
-				$this->delete($link, $id);
-			}catch (MysqlException|FormatterException|ParserException $e){
-				throw new UnderlyingStorageError($e->getMessage(), 0, $e);
+			$e_id = $link->real_escape_string($id);
+			/** @noinspection SqlResolve */
+			$ok = $link->query("DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
+			if (!$ok) {
+				throw new UnderlyingStorageError($link->error);
 			}
 		});
 	}
@@ -282,7 +280,10 @@ class MyStorage implements GenericStorage
 		$this->linkProvider->withLink(function (\mysqli $link) use ($criteria) {
 			try{
 				/** @noinspection SqlResolve */
-				$link->query("DELETE FROM `$this->tableNameEscaped` WHERE ".$this->makeWhere($link, $criteria));
+				$ok = $link->query("DELETE FROM `$this->tableNameEscaped` WHERE ".$this->makeWhere($link, $criteria));
+				if (!$ok) {
+					throw new UnderlyingStorageError($link->error);
+				}
 			}catch (MySqlException|FormatterException|ParserException $e){
 				throw new UnderlyingStorageError('MyStorage removeByCriteria query failed', 0, $e);
 			}
@@ -292,11 +293,10 @@ class MyStorage implements GenericStorage
 	public function clear() : void
 	{
 		$this->linkProvider->withLink(function (\mysqli $link) {
-			try{
-				/** @noinspection SqlResolve */
-				$link->query("DELETE FROM `$this->tableNameEscaped`");
-			}catch (MySqlException|FormatterException|ParserException $e){
-				throw new UnderlyingStorageError('MyStorage clear query failed', 0, $e);
+			/** @noinspection SqlResolve */
+			$ok = $link->query("DELETE FROM `$this->tableNameEscaped`");
+			if (!$ok) {
+				throw new UnderlyingStorageError($link->error);
 			}
 		});
 	}
@@ -344,7 +344,7 @@ class MyStorage implements GenericStorage
 		}else {
 			$update .= " AND `\$revision`=$expected_rev";
 			$ok = $link->query($update);
-			if(!$ok){
+			if (!$ok) {
 				throw new UnderlyingStorageError($link->errno);
 			}
 			$affected = $link->affected_rows;
@@ -355,21 +355,6 @@ class MyStorage implements GenericStorage
 				$rev = $rec['$revision'];
 				throw new UnexpectedRevision("Item '$id' expected revision $expected_rev does not match actual $rev");
 			}
-		}
-	}
-
-	/**
-	 * @param \mysqli $link
-	 * @param string $id
-	 * @throws UnderlyingStorageError
-	 */
-	private function delete(\mysqli $link, string $id) : void
-	{
-		$e_id = $link->real_escape_string($id);
-		/** @noinspection SqlResolve */
-		$ok = $link->query("DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
-		if(!$ok){
-			throw new UnderlyingStorageError($link->error);
 		}
 	}
 
@@ -388,7 +373,7 @@ class MyStorage implements GenericStorage
 		$q1 = "INSERT INTO `$this->tableNameEscaped` SET `\$id`=UNHEX('$e_id'), `\$data`='$e_data' $add_column_set_str \n".
 			"ON DUPLICATE KEY UPDATE `\$data`='$e_data', `\$revision`=`\$revision`+1 $add_column_set_str";
 		$ok = $link->query($q1);
-		if(!$ok){
+		if (!$ok) {
 			throw new UnderlyingStorageError($link->error);
 		}
 	}

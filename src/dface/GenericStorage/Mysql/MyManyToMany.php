@@ -6,21 +6,15 @@ namespace dface\GenericStorage\Mysql;
 use dface\GenericStorage\Generic\GenericManyToMany;
 use dface\GenericStorage\Generic\UnderlyingStorageError;
 use dface\Mysql\MysqlException;
-use dface\Mysql\MysqliConnection;
-use dface\sql\placeholders\DefaultFormatter;
-use dface\sql\placeholders\DefaultParser;
 use dface\sql\placeholders\FormatterException;
 use dface\sql\placeholders\ParserException;
 use dface\sql\placeholders\PlainNode;
 
-class MyManyToMany implements GenericManyToMany {
+class MyManyToMany implements GenericManyToMany
+{
 
-	/** @var \mysqli */
-	private $link;
-	/** @var MysqliConnection */
-	private $dbi;
-	/** @var string */
-	private $tableName;
+	/** @var MyLinkProvider */
+	private $linkProvider;
 	/** @var string */
 	private $tableNameEscaped;
 	/** @var string */
@@ -31,11 +25,15 @@ class MyManyToMany implements GenericManyToMany {
 	private $leftColumnName;
 	/** @var string */
 	private $rightColumnName;
+	/** @var string */
+	private $leftColumnNameEscaped;
+	/** @var string */
+	private $rightColumnNameEscaped;
 	/** @var bool */
 	private $temporary;
 
 	public function __construct(
-		\mysqli $link,
+		MyLinkProvider $linkProvider,
 		string $tableName,
 		string $leftClassName,
 		string $rightClassName,
@@ -43,66 +41,78 @@ class MyManyToMany implements GenericManyToMany {
 		string $rightColumnName = 'right',
 		bool $temporary = false
 	) {
-		$this->link = $link;
-		$this->dbi = new MysqliConnection($link, new DefaultParser(), new DefaultFormatter());
-		$this->tableName = $tableName;
+		$this->linkProvider = $linkProvider;
 		$this->tableNameEscaped = str_replace('`', '``', $tableName);
 		$this->leftClassName = $leftClassName;
 		$this->rightClassName = $rightClassName;
 		$this->leftColumnName = $leftColumnName;
 		$this->rightColumnName = $rightColumnName;
+		$this->leftColumnNameEscaped = str_replace('`', '``', $leftColumnName);
+		$this->rightColumnNameEscaped = str_replace('`', '``', $rightColumnName);
 		$this->temporary = $temporary;
 	}
 
 	/**
 	 * @param $left
 	 * @return \traversable
-	 * @throws UnderlyingStorageError
 	 */
-	public function getAllByLeft($left) : \traversable {
-		try{
-			yield from $this->getAllByColumn($this->rightClassName, $this->rightColumnName, $this->leftColumnName, $left);
-		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-		}
+	public function getAllByLeft($left) : \traversable
+	{
+		return $this->linkProvider->withLink(function (\mysqli $link) use ($left) {
+			try{
+				yield from $this->getAllByColumn($link, true, $left);
+			}catch (MysqlException|FormatterException|ParserException $e){
+				throw new UnderlyingStorageError($e->getMessage(), 0, $e);
+			}
+		});
 	}
 
 	/**
 	 * @param $right
 	 * @return \traversable
-	 *
-	 * @throws UnderlyingStorageError
 	 */
-	public function getAllByRight($right) : \traversable {
-		try{
-			yield from $this->getAllByColumn($this->leftClassName, $this->leftColumnName, $this->rightColumnName, $right);
-		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-		}
+	public function getAllByRight($right) : \traversable
+	{
+		return $this->linkProvider->withLink(function (\mysqli $link) use ($right) {
+			try{
+				yield from $this->getAllByColumn($link, false, $right);
+			}catch (MysqlException|FormatterException|ParserException $e){
+				throw new UnderlyingStorageError($e->getMessage(), 0, $e);
+			}
+		});
 	}
 
 	/**
-	 * @param string $dataClassName
-	 * @param string $dataColumn
-	 * @param string $byColumn
+	 * @param \mysqli $link
+	 * @param bool $byLeft
 	 * @param string $byValue
 	 * @return \Generator
-	 *
-	 * @throws MysqlException|FormatterException|ParserException
+	 * @throws UnderlyingStorageError
 	 */
 	private function getAllByColumn(
-		string $dataClassName,
-		string $dataColumn,
-		string $byColumn,
+		\mysqli $link,
+		bool $byLeft,
 		string $byValue
 	) : \Generator {
-		$e_data_col = str_replace('`', '``', $dataColumn);
-		$e_by_col = str_replace('`', '``', $byColumn);
-		$e_by_val = $this->link->real_escape_string($byValue);
+		if ($byLeft) {
+			$e_data_col = $this->rightColumnNameEscaped;
+			$e_by_col = $this->leftColumnNameEscaped;
+			$dataColumn = $this->rightColumnName;
+			$dataClassName = $this->rightClassName;
+		}else {
+			$e_data_col = $this->leftColumnNameEscaped;
+			$e_by_col = $this->rightColumnNameEscaped;
+			$dataColumn = $this->leftColumnName;
+			$dataClassName = $this->leftClassName;
+		}
+		$e_by_val = $link->real_escape_string($byValue);
 		/** @noinspection SqlResolve */
-		$q1 = new PlainNode(0, "SELECT HEX(`$e_data_col`) `$e_data_col` FROM `$this->tableNameEscaped` WHERE `$e_by_col`=UNHEX('$e_by_val')");
-		$it = $this->dbi->query($q1);
-		foreach($it as $rec){
+		$q1 = "SELECT HEX(`$e_data_col`) `$e_data_col` FROM `$this->tableNameEscaped` WHERE `$e_by_col`=UNHEX('$e_by_val')";
+		$it = $link->query($q1);
+		if ($it === false) {
+			throw new UnderlyingStorageError($link->error);
+		}
+		foreach ($it as $rec) {
 			/** @noinspection PhpUndefinedMethodInspection */
 			$x = $dataClassName::deserialize($rec[$dataColumn]);
 			yield $x;
@@ -113,120 +123,125 @@ class MyManyToMany implements GenericManyToMany {
 	 * @param $left
 	 * @param $right
 	 * @return bool
-	 * @throws UnderlyingStorageError
 	 */
 	public function has($left, $right) : bool
 	{
-		try{
+		return $this->linkProvider->withLink(function (\mysqli $link) use ($left, $right) {
 			$e_left_col = str_replace('`', '``', $this->leftColumnName);
 			$e_right_col = str_replace('`', '``', $this->rightColumnName);
-			$e_left_val = $this->link->real_escape_string($left);
-			$e_right_val = $this->link->real_escape_string($right);
+			$e_left_val = $link->real_escape_string($left);
+			$e_right_val = $link->real_escape_string($right);
 			/** @noinspection SqlResolve */
-			$q1 = new PlainNode(0, "SELECT 1 FROM `$this->tableNameEscaped`
-				WHERE `$e_left_col`=UNHEX('$e_left_val') AND `$e_right_col`=UNHEX('$e_right_val')");
-			return $this->dbi->select($q1)->getValue() !== null;
-		}catch (MysqlException|FormatterException|ParserException $e){
-			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-		}
+			$q1 = "SELECT 1 FROM `$this->tableNameEscaped`
+				WHERE `$e_left_col`=UNHEX('$e_left_val') AND `$e_right_col`=UNHEX('$e_right_val')";
+			$res = $link->query($q1);
+			if ($res === false) {
+				throw new UnderlyingStorageError($link->error);
+			}
+			return $res->fetch_row() !== null;
+		});
 	}
 
 	/**
 	 * @param $left
 	 * @param $right
-	 *
-	 * @throws UnderlyingStorageError
 	 */
-	public function add($left, $right) : void {
-		try{
+	public function add($left, $right) : void
+	{
+		$this->linkProvider->withLink(function (\mysqli $link) use ($left, $right) {
 			$e_left_col = str_replace('`', '``', $this->leftColumnName);
 			$e_right_col = str_replace('`', '``', $this->rightColumnName);
-			$e_left_val = $this->link->real_escape_string($left);
-			$e_right_val = $this->link->real_escape_string($right);
+			$e_left_val = $link->real_escape_string($left);
+			$e_right_val = $link->real_escape_string($right);
 			/** @noinspection SqlResolve */
-			$q1 = new PlainNode(0, "INSERT IGNORE INTO `$this->tableNameEscaped` (`$e_left_col`, `$e_right_col`) VALUES (UNHEX('$e_left_val'), UNHEX('$e_right_val'))");
-			$this->dbi->update($q1);
-		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-		}
+			$q1 = "INSERT IGNORE INTO `$this->tableNameEscaped` (`$e_left_col`, `$e_right_col`)
+ 					VALUES (UNHEX('$e_left_val'), UNHEX('$e_right_val'))";
+			$ok = $link->query($q1);
+			if ($ok === false) {
+				throw new UnderlyingStorageError($link->error);
+			}
+		});
 	}
 
 	/**
 	 * @param $left
 	 * @param $right
-	 *
-	 * @throws UnderlyingStorageError
 	 */
-	public function remove($left, $right) : void {
-		try{
+	public function remove($left, $right) : void
+	{
+		$this->linkProvider->withLink(function (\mysqli $link) use ($left, $right) {
 			$e_left_col = str_replace('`', '``', $this->leftColumnName);
 			$e_right_col = str_replace('`', '``', $this->rightColumnName);
-			$e_left_val = $this->link->real_escape_string($left);
-			$e_right_val = $this->link->real_escape_string($right);
+			$e_left_val = $link->real_escape_string($left);
+			$e_right_val = $link->real_escape_string($right);
 			/** @noinspection SqlResolve */
-			$q1 = new PlainNode(0, "DELETE FROM `$this->tableNameEscaped` WHERE `$e_left_col`=UNHEX('$e_left_val') AND `$e_right_col`=UNHEX('$e_right_val')");
-			$this->dbi->update($q1);
-		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-		}
+			$q1 = "DELETE FROM `$this->tableNameEscaped` 
+				WHERE `$e_left_col`=UNHEX('$e_left_val') AND `$e_right_col`=UNHEX('$e_right_val')";
+			$ok = $link->query($q1);
+			if ($ok === false) {
+				throw new UnderlyingStorageError($link->error);
+			}
+		});
 	}
 
 	/**
 	 * @param $left
-	 *
-	 * @throws UnderlyingStorageError
 	 */
-	public function clearLeft($left) : void {
-		try{
-			$this->clearByColumn($this->leftColumnName, $left);
-		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-		}
+	public function clearLeft($left) : void
+	{
+		$this->linkProvider->withLink(function (\mysqli $link) use ($left) {
+			$this->clearByColumn($link, $this->leftColumnName, $left);
+		});
 	}
 
 	/**
 	 * @param $right
-	 *
-	 * @throws UnderlyingStorageError
 	 */
-	public function clearRight($right) : void {
-		try{
-			$this->clearByColumn($this->rightColumnName, $right);
-		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-		}
+	public function clearRight($right) : void
+	{
+		$this->linkProvider->withLink(function (\mysqli $link) use ($right) {
+			$this->clearByColumn($link, $this->rightColumnName, $right);
+		});
 	}
 
 	/**
+	 * @param \mysqli $link
 	 * @param string $column
 	 * @param string $value
-	 *
-	 * @throws MysqlException|FormatterException|ParserException
+	 * @throws UnderlyingStorageError
 	 */
-	private function clearByColumn(string $column, string $value) : void {
+	private function clearByColumn(\mysqli $link, string $column, string $value) : void
+	{
 		$e_col = str_replace('`', '``', $column);
-		$e_val = $this->link->real_escape_string($value);
+		$e_val = $link->real_escape_string($value);
 		/** @noinspection SqlResolve */
 		$q1 = new PlainNode(0, "DELETE FROM `$this->tableNameEscaped` WHERE `$e_col`=UNHEX('$e_val')");
-		$this->dbi->update($q1);
+		$ok = $link->query($q1);
+		if ($ok === false) {
+			throw new UnderlyingStorageError($link->error);
+		}
 	}
 
-	/**
-	 * @throws FormatterException
-	 * @throws MySqlException
-	 * @throws ParserException
-	 */
-	public function reset() : void {
-		$this->dbi->query('DROP TABLE IF EXISTS {i}', $this->tableName);
-		$tmp = $this->temporary ? 'TEMPORARY' : '';
-		$this->dbi->query("CREATE $tmp TABLE {i:1} (
-			`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-			{i:2} BINARY(16) NOT NULL,
-			{i:3} BINARY(16) NOT NULL,
-			`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-			UNIQUE({i:2}, {i:3}),
-			UNIQUE({i:3}, {i:2})
-		) ENGINE=InnoDB", $this->tableName, $this->leftColumnName, $this->rightColumnName);
+	public function reset() : void
+	{
+		$this->linkProvider->withLink(function (\mysqli $link) {
+			$e_left_col = str_replace('`', '``', $this->leftColumnName);
+			$e_right_col = str_replace('`', '``', $this->rightColumnName);
+			$link->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
+			$tmp = $this->temporary ? 'TEMPORARY' : '';
+			$q1 = "CREATE $tmp TABLE `$this->tableNameEscaped` (
+				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+				`$e_left_col` BINARY(16) NOT NULL,
+				`$e_right_col` BINARY(16) NOT NULL,
+				`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+				UNIQUE(`$e_left_col`, `$e_right_col`),
+				UNIQUE(`$e_right_col`, `$e_left_col`)
+			) ENGINE=InnoDB";
+			$ok = $link->query($q1);
+			if ($ok === false) {
+				throw new UnderlyingStorageError($link->error);
+			}
+		});
 	}
 
 }

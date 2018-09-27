@@ -5,48 +5,35 @@ namespace dface\GenericStorage;
 
 use dface\GenericStorage\Generic\UnderlyingStorageError;
 use dface\GenericStorage\Mysql\MySet;
-use dface\Mysql\MysqlException;
-use dface\Mysql\MysqliConnection;
-use dface\sql\placeholders\FormatterException;
-use dface\sql\placeholders\ParserException;
 
-class MySetTest extends GenericSetTest {
+class MySetTest extends GenericSetTest
+{
 
-	/** @var MysqliConnection */
-	private $dbi;
+	/** @var MySameLinkProvider */
+	private $linkProvider;
 
-	/**
-	 * @throws MysqlException
-	 * @throws FormatterException
-	 * @throws ParserException
-	 */
-	protected function setUp() : void {
-		$this->dbi = DbiFactory::getConnection();
+	protected function setUp() : void
+	{
+		$this->linkProvider = DbiFactory::getSameLinkProvider();
 		$this->set = new MySet(
-			$this->dbi,
+			$this->linkProvider,
 			'test_set',
 			TestId::class,
 			true);
 		$this->set->reset();
 	}
 
-	/**
-	 * @throws FormatterException
-	 * @throws MySqlException
-	 * @throws ParserException
-	 */
-	private function broke(){
+	private function broke()
+	{
 		/** @noinspection SqlResolve */
-		$this->dbi->query('DROP TABLE test_set');
+		$this->linkProvider->getLink()->query('DROP TABLE test_set');
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testIterateTroubles(){
+	public function testIterateTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -54,12 +41,10 @@ class MySetTest extends GenericSetTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testContainsTroubles(){
+	public function testContainsTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -67,12 +52,10 @@ class MySetTest extends GenericSetTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testAddTroubles(){
+	public function testAddTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -80,12 +63,10 @@ class MySetTest extends GenericSetTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testRemoveTroubles(){
+	public function testRemoveTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);

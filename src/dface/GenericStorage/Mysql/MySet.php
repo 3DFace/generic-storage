@@ -5,22 +5,12 @@ namespace dface\GenericStorage\Mysql;
 
 use dface\GenericStorage\Generic\GenericSet;
 use dface\GenericStorage\Generic\UnderlyingStorageError;
-use dface\Mysql\MysqlException;
-use dface\Mysql\MysqliConnection;
-use dface\sql\placeholders\DefaultFormatter;
-use dface\sql\placeholders\DefaultParser;
-use dface\sql\placeholders\FormatterException;
-use dface\sql\placeholders\ParserException;
-use dface\sql\placeholders\PlainNode;
 
-class MySet implements GenericSet {
+class MySet implements GenericSet
+{
 
-	/** @var \mysqli */
-	private $link;
-	/** @var MysqliConnection */
-	private $dbi;
-	/** @var string */
-	private $tableName;
+	/** @var MyLinkProvider */
+	private $linkProvider;
 	/** @var string */
 	private $tableNameEscaped;
 	/** @var string */
@@ -29,14 +19,12 @@ class MySet implements GenericSet {
 	private $temporary;
 
 	public function __construct(
-		\mysqli $link,
+		MyLinkProvider $linkProvider,
 		string $tableName,
 		string $className,
 		bool $temporary
 	) {
-		$this->link = $link;
-		$this->dbi = new MysqliConnection($link, new DefaultParser(), new DefaultFormatter());
-		$this->tableName = $tableName;
+		$this->linkProvider = $linkProvider;
 		$this->tableNameEscaped = str_replace('`', '``', $tableName);
 		$this->className = $className;
 		$this->temporary = $temporary;
@@ -45,82 +33,89 @@ class MySet implements GenericSet {
 	/**
 	 * @param $id
 	 * @return bool
-	 *
-	 * @throws UnderlyingStorageError
 	 */
-	public function contains($id) : bool {
-		try{
-			$e_id = $this->link->real_escape_string($id);
+	public function contains($id) : bool
+	{
+		return $this->linkProvider->withLink(function (\mysqli $link) use ($id) {
+			$e_id = $link->real_escape_string($id);
 			/** @noinspection SqlResolve */
-			return $this->dbi->select(new PlainNode(0, "SELECT 1 FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')"))->getValue() !== null;
-		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-		}
+			$q1 = "SELECT 1 FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')";
+			$res = $link->query($q1);
+			if ($res === false) {
+				throw new UnderlyingStorageError($link->error);
+			}
+			return $res->fetch_row() !== null;
+		});
 	}
 
 	/**
 	 * @param $id
-	 *
-	 * @throws UnderlyingStorageError
 	 */
-	public function add($id) : void {
-		try{
-			$e_id = $this->link->real_escape_string($id);
+	public function add($id) : void
+	{
+		$this->linkProvider->withLink(function (\mysqli $link) use ($id) {
+			$e_id = $link->real_escape_string($id);
 			/** @noinspection SqlResolve */
-			$this->dbi->update(new PlainNode(0, "INSERT IGNORE INTO `$this->tableNameEscaped` (`\$id`) VALUES (UNHEX('$e_id'))"));
-		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-		}
+			$q1 = "INSERT IGNORE INTO `$this->tableNameEscaped` (`\$id`) VALUES (UNHEX('$e_id'))";
+			$ok = $link->query($q1);
+			if ($ok === false) {
+				throw new UnderlyingStorageError($link->error);
+			}
+		});
 	}
 
 	/**
 	 * @param $id
-	 *
-	 * @throws UnderlyingStorageError
 	 */
-	public function remove($id) : void {
-		try{
-			$e_id = $this->link->real_escape_string($id);
+	public function remove($id) : void
+	{
+		$this->linkProvider->withLink(function (\mysqli $link) use ($id) {
+			$e_id = $link->real_escape_string($id);
 			/** @noinspection SqlResolve */
-			$this->dbi->update(new PlainNode(0, "DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')"));
-		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-		}
+			$q1 = "DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')";
+			$ok = $link->query($q1);
+			if ($ok === false) {
+				throw new UnderlyingStorageError($link->error);
+			}
+		});
 	}
 
 	/**
 	 * @return \traversable
-	 *
-	 * @throws UnderlyingStorageError
 	 */
-	public function iterate() : \traversable {
-		try{
+	public function iterate() : \traversable
+	{
+		return $this->linkProvider->withLink(function (\mysqli $link) {
 			/** @noinspection SqlResolve */
-			$it = $this->dbi->select(new PlainNode(0, "SELECT HEX(`\$id`) `\$id` FROM `$this->tableNameEscaped`"));
+			$q1 = "SELECT HEX(`\$id`) `\$id` FROM `$this->tableNameEscaped`";
+			$it = $link->query($q1);
+			if ($it === false) {
+				throw new UnderlyingStorageError($link->error);
+			}
 			$className = $this->className;
-			foreach($it as $rec){
+			foreach ($it as $rec) {
 				/** @noinspection PhpUndefinedMethodInspection */
 				$x = $className::deserialize($rec['$id']);
 				yield $x;
 			}
-		}catch(MysqlException|FormatterException|ParserException $e){
-			throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-		}
+		});
 	}
 
-	/**
-	 * @throws FormatterException
-	 * @throws MySqlException
-	 * @throws ParserException
-	 */
-	public function reset() : void {
-		$this->dbi->query('DROP TABLE IF EXISTS {i}', $this->tableName);
-		$tmp = $this->temporary ? 'TEMPORARY' : '';
-		$this->dbi->query("CREATE $tmp TABLE {i} (
-			`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-			`\$id` BINARY(16) NOT NULL UNIQUE,
-			`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-		) ENGINE=InnoDB", $this->tableName);
+	public function reset() : void
+	{
+		$this->linkProvider->withLink(function (\mysqli $link) {
+			$link->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
+			$tmp = $this->temporary ? 'TEMPORARY' : '';
+			$q1 = "CREATE $tmp TABLE `$this->tableNameEscaped` (
+				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+				`\$id` BINARY(16) NOT NULL UNIQUE,
+				`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+			) ENGINE=InnoDB";
+			$ok = $link->query($q1);
+			if ($ok === false) {
+				throw new UnderlyingStorageError($link->error);
+			}
+		});
 	}
 
 }

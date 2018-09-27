@@ -5,28 +5,18 @@ namespace dface\GenericStorage;
 
 use dface\GenericStorage\Generic\UnderlyingStorageError;
 use dface\GenericStorage\Mysql\MyManyToMany;
-use dface\Mysql\MysqlException;
-use dface\Mysql\MysqliConnection;
-use dface\sql\placeholders\DefaultFormatter;
-use dface\sql\placeholders\DefaultParser;
-use dface\sql\placeholders\FormatterException;
-use dface\sql\placeholders\ParserException;
 
-class MyManyToManyTest extends GenericManyToManyTest {
+class MyManyToManyTest extends GenericManyToManyTest
+{
 
-	/** @var MysqliConnection */
-	private $dbi;
+	/** @var MySameLinkProvider */
+	private $linkProvider;
 
-	/**
-	 * @throws MysqlException
-	 * @throws FormatterException
-	 * @throws ParserException
-	 */
-	protected function setUp() : void {
-		$link = DbiFactory::getConnection();
-		$this->dbi = new MysqliConnection($link, new DefaultParser(), new DefaultFormatter());
+	protected function setUp() : void
+	{
+		$this->linkProvider = DbiFactory::getSameLinkProvider();
 		$this->assoc = new MyManyToMany(
-			$link,
+			$this->linkProvider,
 			'test_many_to_many',
 			TestId::class,
 			TestId::class,
@@ -34,23 +24,17 @@ class MyManyToManyTest extends GenericManyToManyTest {
 		$this->assoc->reset();
 	}
 
-	/**
-	 * @throws FormatterException
-	 * @throws MySqlException
-	 * @throws ParserException
-	 */
-	private function broke(){
+	private function broke() : void
+	{
 		/** @noinspection SqlResolve */
-		$this->dbi->query('DROP TABLE test_many_to_many');
+		$this->linkProvider->getLink()->query('DROP TABLE test_many_to_many');
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testGetAllByLeftTroubles(){
+	public function testGetAllByLeftTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -58,12 +42,10 @@ class MyManyToManyTest extends GenericManyToManyTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testGetAllByRightTroubles(){
+	public function testGetAllByRightTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -71,12 +53,10 @@ class MyManyToManyTest extends GenericManyToManyTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testAddTroubles(){
+	public function testAddTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -84,12 +64,10 @@ class MyManyToManyTest extends GenericManyToManyTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testRemoveTroubles(){
+	public function testRemoveTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -97,12 +75,10 @@ class MyManyToManyTest extends GenericManyToManyTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testClearRightTroubles(){
+	public function testClearRightTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
@@ -110,12 +86,10 @@ class MyManyToManyTest extends GenericManyToManyTest {
 	}
 
 	/**
-	 * @throws FormatterException
 	 * @throws Generic\GenericStorageError
-	 * @throws MysqlException
-	 * @throws ParserException
 	 */
-	public function testClearLeftTroubles(){
+	public function testClearLeftTroubles() : void
+	{
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
