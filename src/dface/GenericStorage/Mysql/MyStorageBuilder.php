@@ -14,6 +14,8 @@ class MyStorageBuilder {
 	/** @var string */
 	private $idPropertyName;
 	/** @var string */
+	private $idLength = 16;
+	/** @var string */
 	private $revisionPropertyName;
 	/** @var string[] */
 	private $add_generated_columns = [];
@@ -42,12 +44,17 @@ class MyStorageBuilder {
 		$this->tableName = $tableName;
 	}
 
-	public function setIdPropertyName($idPropertyName) : MyStorageBuilder {
+	public function setIdPropertyName(string $idPropertyName) : MyStorageBuilder {
 		$this->idPropertyName = $idPropertyName;
 		return $this;
 	}
 
-	public function setRevisionPropertyName($revisionPropertyName) : MyStorageBuilder {
+	public function setIdLength(int $idLength) : MyStorageBuilder {
+		$this->idLength = $idLength;
+		return $this;
+	}
+
+	public function setRevisionPropertyName(string $revisionPropertyName) : MyStorageBuilder {
 		$this->revisionPropertyName = $revisionPropertyName;
 		return $this;
 	}
@@ -77,12 +84,12 @@ class MyStorageBuilder {
 		return $this;
 	}
 
-	public function setBatchListSize($batchListSize) : MyStorageBuilder {
+	public function setBatchListSize(int $batchListSize) : MyStorageBuilder {
 		$this->batchListSize = $batchListSize;
 		return $this;
 	}
 
-	public function setIdBatchSize($idBatchSize) : MyStorageBuilder {
+	public function setIdBatchSize(int $idBatchSize) : MyStorageBuilder {
 		$this->idBatchSize = $idBatchSize;
 		return $this;
 	}
@@ -112,6 +119,7 @@ class MyStorageBuilder {
 			$this->linkProvider,
 			$this->tableName,
 			$this->idPropertyName,
+			$this->idLength,
 			$this->revisionPropertyName,
 			$this->add_generated_columns,
 			$this->add_columns,

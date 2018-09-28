@@ -8,11 +8,17 @@ use dface\GenericStorage\Mysql\MyStorageBuilder;
 class MyGenericStorageBatched10Test extends GenericStorageTest
 {
 
+	protected function getIdLength() : int
+	{
+		return 32;
+	}
+
 	protected function setUp()
 	{
 		$linkProvider = DbiFactory::getSameLinkProvider();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
 			->setIdPropertyName('id')
+			->setIdLength($this->getIdLength())
 			->setRevisionPropertyName('revision')
 			->addColumns([
 				'email' => 'VARCHAR(128)',

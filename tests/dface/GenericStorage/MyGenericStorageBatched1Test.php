@@ -13,6 +13,7 @@ class MyGenericStorageBatched1Test extends GenericStorageTest
 		$linkProvider = DbiFactory::getSameLinkProvider();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
 			->setIdPropertyName('id')
+			->setIdLength(32)
 			->setRevisionPropertyName('revision')
 			->addColumns([
 				'email' => 'VARCHAR(128)',

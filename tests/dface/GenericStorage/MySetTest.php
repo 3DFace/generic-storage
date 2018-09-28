@@ -23,7 +23,7 @@ class MySetTest extends GenericSetTest
 		$this->set->reset();
 	}
 
-	private function broke()
+	private function broke() : void
 	{
 		/** @noinspection SqlResolve */
 		$this->linkProvider->getLink()->query('DROP TABLE test_set');
@@ -48,7 +48,7 @@ class MySetTest extends GenericSetTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		$this->set->contains(new TestId());
+		$this->set->contains(TestId::generate($this->getIdLength()));
 	}
 
 	/**
@@ -59,7 +59,7 @@ class MySetTest extends GenericSetTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		$this->set->add(new TestId());
+		$this->set->add(TestId::generate($this->getIdLength()));
 	}
 
 	/**
@@ -70,7 +70,7 @@ class MySetTest extends GenericSetTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		$this->set->remove(new TestId());
+		$this->set->remove(TestId::generate($this->getIdLength()));
 	}
 
 }

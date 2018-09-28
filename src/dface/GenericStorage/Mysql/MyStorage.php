@@ -35,6 +35,8 @@ class MyStorage implements GenericStorage
 	private $tableNameEscaped;
 	/** @var string */
 	private $idPropertyName;
+	/** @var int */
+	private $idLength;
 	/** @var string */
 	private $revisionPropertyPath;
 	/** @var string[] */
@@ -74,6 +76,7 @@ class MyStorage implements GenericStorage
 	 * @param MyLinkProvider $link_provider
 	 * @param string $tableName
 	 * @param string|null $idPropertyName
+	 * @param int $idLength
 	 * @param string|null $revisionPropertyName
 	 * @param array $add_generated_columns
 	 * @param array $add_columns
@@ -85,13 +88,13 @@ class MyStorage implements GenericStorage
 	 * @param string $dataColumnDef
 	 * @param int $dataMaxSize
 	 * @param bool $compressed
-	 * @throws \InvalidArgumentException
 	 */
 	public function __construct(
 		string $className,
 		MyLinkProvider $link_provider,
 		string $tableName,
 		string $idPropertyName = null,
+		int $idLength = 16,
 		string $revisionPropertyName = null,
 		array $add_generated_columns = [],
 		array $add_columns = [],
@@ -110,6 +113,7 @@ class MyStorage implements GenericStorage
 		$this->className = $className;
 		$this->tableNameEscaped = str_replace('`', '``', $tableName);
 		$this->idPropertyName = $idPropertyName;
+		$this->idLength = $idLength;
 		if ($revisionPropertyName !== null) {
 			$this->revisionPropertyPath = explode('/', $revisionPropertyName);
 		}
@@ -718,7 +722,7 @@ class MyStorage implements GenericStorage
 			$tmp = $this->temporary ? 'TEMPORARY' : '';
 			$link->query("CREATE $tmp TABLE `$this->tableNameEscaped` (
 				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-				`\$id` BINARY(16) NOT NULL,
+				`\$id` BINARY({$this->idLength}) NOT NULL,
 				`\$data` {$this->dataColumnDef},
 				`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 				`\$revision` INT NOT NULL DEFAULT 1,

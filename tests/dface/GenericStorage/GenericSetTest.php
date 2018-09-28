@@ -11,11 +11,15 @@ abstract class GenericSetTest extends TestCase {
 	/** @var GenericSet */
 	protected $set;
 
+	protected function getIdLength() : int {
+		return 16;
+	}
+
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testContainsAdded() : void {
-		$id = new TestId();
+		$id = TestId::generate($this->getIdLength());
 		$this->set->add($id);
 		$this->assertTrue($this->set->contains($id));
 		$this->assertEquals([$id], iterator_to_array($this->set->iterate()));
@@ -25,9 +29,9 @@ abstract class GenericSetTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function TestId() : void {
-		$id = new TestId();
+		$id = TestId::generate($this->getIdLength());
 		$this->set->add($id);
-		$another_id = new TestId();
+		$another_id = TestId::generate($this->getIdLength());
 		$this->assertFalse($this->set->contains($another_id));
 		$this->assertEquals([$id], iterator_to_array($this->set->iterate()));
 	}
@@ -36,7 +40,7 @@ abstract class GenericSetTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testNotContainsRemoved() : void {
-		$id = new TestId();
+		$id = TestId::generate($this->getIdLength());
 		$this->set->add($id);
 		$this->set->remove($id);
 		$this->assertFalse($this->set->contains($id));

@@ -11,12 +11,16 @@ abstract class GenericManyToManyTest extends TestCase {
 	/** @var GenericManyToMany */
 	protected $assoc;
 
+	protected function getIdLength() : int {
+		return 16;
+	}
+
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testOneToOne() : void {
-		$l = new TestId();
-		$r = new TestId();
+		$l = TestId::generate($this->getIdLength());
+		$r = TestId::generate($this->getIdLength());
 		$this->assoc->add($l, $r);
 
 		$byLeft = iterator_to_array($this->assoc->getAllByLeft($l));
@@ -30,9 +34,9 @@ abstract class GenericManyToManyTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testHas() : void {
-		$l = new TestId();
-		$r = new TestId();
-		$x = new TestId();
+		$l = TestId::generate($this->getIdLength());
+		$r = TestId::generate($this->getIdLength());
+		$x = TestId::generate($this->getIdLength());
 
 		$this->assertFalse($this->assoc->has($l, $r));
 
@@ -47,9 +51,9 @@ abstract class GenericManyToManyTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testManyToOne() : void {
-		$l1 = new TestId();
-		$l2 = new TestId();
-		$r = new TestId();
+		$l1 = TestId::generate($this->getIdLength());
+		$l2 = TestId::generate($this->getIdLength());
+		$r = TestId::generate($this->getIdLength());
 
 		$this->assoc->add($l1, $r);
 		$this->assoc->add($l2, $r);
@@ -72,10 +76,10 @@ abstract class GenericManyToManyTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testOneToMany() : void {
-		$l = new TestId();
+		$l = TestId::generate($this->getIdLength());
 
-		$r1 = new TestId();
-		$r2 = new TestId();
+		$r1 = TestId::generate($this->getIdLength());
+		$r2 = TestId::generate($this->getIdLength());
 		$this->assoc->add($l, $r1);
 		$this->assoc->add($l, $r2);
 
@@ -97,8 +101,8 @@ abstract class GenericManyToManyTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testRemove() : void {
-		$l = new TestId();
-		$r = new TestId();
+		$l = TestId::generate($this->getIdLength());
+		$r = TestId::generate($this->getIdLength());
 		$this->assoc->add($l, $r);
 		$this->assoc->remove($l, $r);
 
@@ -113,12 +117,12 @@ abstract class GenericManyToManyTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testClearLeft() : void {
-		$l1 = new TestId();
-		$l2 = new TestId();
-		$r1 = new TestId();
-		$r2 = new TestId();
-		$r3 = new TestId();
-		$r4 = new TestId();
+		$l1 = TestId::generate($this->getIdLength());
+		$l2 = TestId::generate($this->getIdLength());
+		$r1 = TestId::generate($this->getIdLength());
+		$r2 = TestId::generate($this->getIdLength());
+		$r3 = TestId::generate($this->getIdLength());
+		$r4 = TestId::generate($this->getIdLength());
 
 		$this->assoc->add($l1, $r1);
 		$this->assoc->add($l1, $r2);
@@ -134,12 +138,12 @@ abstract class GenericManyToManyTest extends TestCase {
 	 * @throws Generic\GenericStorageError
 	 */
 	public function testClearRight() : void {
-		$l1 = new TestId();
-		$l2 = new TestId();
-		$l3 = new TestId();
-		$l4 = new TestId();
-		$r1 = new TestId();
-		$r2 = new TestId();
+		$l1 = TestId::generate($this->getIdLength());
+		$l2 = TestId::generate($this->getIdLength());
+		$l3 = TestId::generate($this->getIdLength());
+		$l4 = TestId::generate($this->getIdLength());
+		$r1 = TestId::generate($this->getIdLength());
+		$r2 = TestId::generate($this->getIdLength());
 
 		$this->assoc->add($l1, $r1);
 		$this->assoc->add($l2, $r1);

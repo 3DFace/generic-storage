@@ -7,12 +7,13 @@ class TestId {
 
 	private $bin;
 
-	public function __construct($bin = null) {
+	public function __construct(string $bin) {
 		$this->bin = $bin;
-		if($this->bin === null){
-			/** @noinspection PhpUnhandledExceptionInspection */
-			$this->bin = \random_bytes(16);
-		}
+	}
+
+	public static function generate(int $length) : self{
+		/** @noinspection PhpUnhandledExceptionInspection */
+		return new static(\random_bytes($length));
 	}
 
 	public function __toString() {

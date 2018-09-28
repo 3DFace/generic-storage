@@ -38,7 +38,7 @@ class MyManyToManyTest extends GenericManyToManyTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		iterator_to_array($this->assoc->getAllByLeft(new TestId()));
+		iterator_to_array($this->assoc->getAllByLeft(TestId::generate($this->getIdLength())));
 	}
 
 	/**
@@ -49,7 +49,7 @@ class MyManyToManyTest extends GenericManyToManyTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		iterator_to_array($this->assoc->getAllByRight(new TestId()));
+		iterator_to_array($this->assoc->getAllByRight(TestId::generate($this->getIdLength())));
 	}
 
 	/**
@@ -60,7 +60,7 @@ class MyManyToManyTest extends GenericManyToManyTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		$this->assoc->add(new TestId(), new TestId());
+		$this->assoc->add(TestId::generate($this->getIdLength()), TestId::generate($this->getIdLength()));
 	}
 
 	/**
@@ -71,7 +71,7 @@ class MyManyToManyTest extends GenericManyToManyTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		$this->assoc->remove(new TestId(), new TestId());
+		$this->assoc->remove(TestId::generate($this->getIdLength()), TestId::generate($this->getIdLength()));
 	}
 
 	/**
@@ -82,7 +82,7 @@ class MyManyToManyTest extends GenericManyToManyTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		$this->assoc->clearRight(new TestId());
+		$this->assoc->clearRight(TestId::generate($this->getIdLength()));
 	}
 
 	/**
@@ -93,7 +93,7 @@ class MyManyToManyTest extends GenericManyToManyTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		$this->assoc->clearLeft(new TestId());
+		$this->assoc->clearLeft(TestId::generate($this->getIdLength()));
 	}
 
 }

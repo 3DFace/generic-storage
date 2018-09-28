@@ -58,8 +58,8 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest
 	public function testUniqueConstraint() : void
 	{
 		$s = $this->storage;
-		$uid1 = new TestId();
-		$uid2 = new TestId();
+		$uid1 = TestId::generate($this->getIdLength());
+		$uid2 = TestId::generate($this->getIdLength());
 		$entity1 = new TestEntity($uid1, 'Test User', 'user@test.php', new TestData('asd', 10), 1);
 		$entity2 = new TestEntity($uid2, 'Test User', 'user@test.php', new TestData('asd', 10), 1);
 		$s->saveItem($uid1, $entity1);
@@ -73,7 +73,7 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest
 	public function testDataSizeLimited() : void
 	{
 		$s = $this->storage;
-		$uid1 = new TestId();
+		$uid1 = TestId::generate($this->getIdLength());
 		$data = new TestData(str_repeat('x', 65535), 10);
 		$entity1 = new TestEntity($uid1, 'Test User', 'user@test.php', $data, 1);
 		$this->expectException(UnderlyingStorageError::class);
@@ -85,8 +85,8 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest
 	{
 		/** @var MyStorage $s */
 		$s = $this->storage;
-		$uid1 = new TestId();
-		$uid2 = new TestId();
+		$uid1 = TestId::generate($this->getIdLength());
+		$uid2 = TestId::generate($this->getIdLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php', new TestData('asd', 10), 1);
 		$s->saveItem($uid1, $entity1);
