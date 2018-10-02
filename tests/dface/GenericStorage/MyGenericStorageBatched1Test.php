@@ -7,6 +7,10 @@ use dface\GenericStorage\Mysql\MyStorageBuilder;
 
 class MyGenericStorageBatched1Test extends GenericStorageTest
 {
+	protected function getIdLength() : int
+	{
+		return 32;
+	}
 
 	protected function setUp()
 	{

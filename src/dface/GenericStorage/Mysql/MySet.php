@@ -40,10 +40,7 @@ class MySet implements GenericSet
 			$e_id = $link->real_escape_string($id);
 			/** @noinspection SqlResolve */
 			$q1 = "SELECT 1 FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')";
-			$res = $link->query($q1);
-			if ($res === false) {
-				throw new UnderlyingStorageError($link->error);
-			}
+			$res = MyFun::query($link, $q1);
 			return $res->fetch_row() !== null;
 		});
 	}
@@ -57,10 +54,7 @@ class MySet implements GenericSet
 			$e_id = $link->real_escape_string($id);
 			/** @noinspection SqlResolve */
 			$q1 = "INSERT IGNORE INTO `$this->tableNameEscaped` (`\$id`) VALUES (UNHEX('$e_id'))";
-			$ok = $link->query($q1);
-			if ($ok === false) {
-				throw new UnderlyingStorageError($link->error);
-			}
+			MyFun::query($link, $q1);
 		});
 	}
 
@@ -73,10 +67,7 @@ class MySet implements GenericSet
 			$e_id = $link->real_escape_string($id);
 			/** @noinspection SqlResolve */
 			$q1 = "DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')";
-			$ok = $link->query($q1);
-			if ($ok === false) {
-				throw new UnderlyingStorageError($link->error);
-			}
+			MyFun::query($link, $q1);
 		});
 	}
 
@@ -88,10 +79,7 @@ class MySet implements GenericSet
 		return $this->linkProvider->withLink(function (\mysqli $link) {
 			/** @noinspection SqlResolve */
 			$q1 = "SELECT HEX(`\$id`) `\$id` FROM `$this->tableNameEscaped`";
-			$it = $link->query($q1);
-			if ($it === false) {
-				throw new UnderlyingStorageError($link->error);
-			}
+			$it = MyFun::query($link, $q1);
 			$className = $this->className;
 			foreach ($it as $rec) {
 				/** @noinspection PhpUndefinedMethodInspection */
@@ -104,17 +92,14 @@ class MySet implements GenericSet
 	public function reset() : void
 	{
 		$this->linkProvider->withLink(function (\mysqli $link) {
-			$link->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
+			MyFun::query($link, "DROP TABLE IF EXISTS `$this->tableNameEscaped`");
 			$tmp = $this->temporary ? 'TEMPORARY' : '';
 			$q1 = "CREATE $tmp TABLE `$this->tableNameEscaped` (
 				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 				`\$id` BINARY(16) NOT NULL UNIQUE,
 				`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 			) ENGINE=InnoDB";
-			$ok = $link->query($q1);
-			if ($ok === false) {
-				throw new UnderlyingStorageError($link->error);
-			}
+			MyFun::query($link, $q1);
 		});
 	}
 

@@ -157,10 +157,7 @@ class MyStorage implements GenericStorage
 				try{
 					$e_id = $link->real_escape_string($id);
 					/** @noinspection SqlResolve */
-					$it1 = $link->query("SELECT `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
-					if ($it1 === false) {
-						throw new UnderlyingStorageError($link->error);
-					}
+					$it1 = MyFun::query($link, "SELECT `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
 					/** @noinspection LoopWhichDoesNotLoopInspection */
 					foreach ($it1 as $rec) {
 						return $this->deserialize($rec);
@@ -269,10 +266,7 @@ class MyStorage implements GenericStorage
 		$this->linkProvider->withLink(function (\mysqli $link) use ($id) {
 			$e_id = $link->real_escape_string($id);
 			/** @noinspection SqlResolve */
-			$ok = $link->query("DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
-			if (!$ok) {
-				throw new UnderlyingStorageError($link->error);
-			}
+			MyFun::query($link, "DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
 		});
 	}
 
@@ -284,10 +278,7 @@ class MyStorage implements GenericStorage
 		$this->linkProvider->withLink(function (\mysqli $link) use ($criteria) {
 			try{
 				/** @noinspection SqlResolve */
-				$ok = $link->query("DELETE FROM `$this->tableNameEscaped` WHERE ".$this->makeWhere($link, $criteria));
-				if (!$ok) {
-					throw new UnderlyingStorageError($link->error);
-				}
+				MyFun::query($link, "DELETE FROM `$this->tableNameEscaped` WHERE ".$this->makeWhere($link, $criteria));
 			}catch (MySqlException|FormatterException|ParserException $e){
 				throw new UnderlyingStorageError('MyStorage removeByCriteria query failed', 0, $e);
 			}
@@ -298,10 +289,7 @@ class MyStorage implements GenericStorage
 	{
 		$this->linkProvider->withLink(function (\mysqli $link) {
 			/** @noinspection SqlResolve */
-			$ok = $link->query("DELETE FROM `$this->tableNameEscaped`");
-			if (!$ok) {
-				throw new UnderlyingStorageError($link->error);
-			}
+			MyFun::query($link, "DELETE FROM `$this->tableNameEscaped`");
 		});
 	}
 
@@ -344,17 +332,14 @@ class MyStorage implements GenericStorage
 		$update = "UPDATE `$this->tableNameEscaped` SET `\$data`='$e_data', `\$revision`=`\$revision`+1 ".
 			"$add_column_set_node WHERE `\$id`=UNHEX('$e_id')";
 		if ($expected_rev === null) {
-			$link->query($update);
+			MyFun::query($link, $update);
 		}else {
 			$update .= " AND `\$revision`=$expected_rev";
-			$ok = $link->query($update);
-			if (!$ok) {
-				throw new UnderlyingStorageError($link->errno);
-			}
+			MyFun::query($link, $update);
 			$affected = $link->affected_rows;
 			if ($affected === 0) {
 				/** @noinspection SqlResolve */
-				$res = $link->query("SELECT `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
+				$res = MyFun::query($link, "SELECT `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
 				$rec = $res->fetch_assoc();
 				$rev = $rec['$revision'];
 				throw new UnexpectedRevision("Item '$id' expected revision $expected_rev does not match actual $rev");
@@ -376,10 +361,7 @@ class MyStorage implements GenericStorage
 		/** @noinspection SqlResolve */
 		$q1 = "INSERT INTO `$this->tableNameEscaped` SET `\$id`=UNHEX('$e_id'), `\$data`='$e_data' $add_column_set_str \n".
 			"ON DUPLICATE KEY UPDATE `\$data`='$e_data', `\$revision`=`\$revision`+1 $add_column_set_str";
-		$ok = $link->query($q1);
-		if (!$ok) {
-			throw new UnderlyingStorageError($link->error);
-		}
+		MyFun::query($link, $q1);
 	}
 
 	/**
@@ -462,7 +444,7 @@ class MyStorage implements GenericStorage
 					$add_column_set_str = $this->createUpdateColumnsFragment($link, $arr);
 					$e_id = $link->real_escape_string($rec['$seq_id']);
 					/** @noinspection SqlResolve */
-					$link->query("UPDATE `$this->tableNameEscaped` SET $add_column_set_str WHERE `\$seq_id`='$e_id'");
+					MyFun::query($link, "UPDATE `$this->tableNameEscaped` SET $add_column_set_str WHERE `\$seq_id`='$e_id'");
 				}
 			}
 		});
@@ -718,9 +700,9 @@ class MyStorage implements GenericStorage
 			$add_generated_columns = $this->add_generated_columns ? ','.implode("\n\t\t\t,",
 					$this->add_generated_columns) : '';
 			$add_indexes = $this->add_indexes ? ','.implode("\n\t\t\t,", $this->add_indexes) : '';
-			$link->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
+			MyFun::query($link, "DROP TABLE IF EXISTS `$this->tableNameEscaped`");
 			$tmp = $this->temporary ? 'TEMPORARY' : '';
-			$link->query("CREATE $tmp TABLE `$this->tableNameEscaped` (
+			MyFun::query($link, "CREATE $tmp TABLE `$this->tableNameEscaped` (
 				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 				`\$id` BINARY({$this->idLength}) NOT NULL,
 				`\$data` {$this->dataColumnDef},

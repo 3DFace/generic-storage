@@ -108,10 +108,7 @@ class MyManyToMany implements GenericManyToMany
 		$e_by_val = $link->real_escape_string($byValue);
 		/** @noinspection SqlResolve */
 		$q1 = "SELECT HEX(`$e_data_col`) `$e_data_col` FROM `$this->tableNameEscaped` WHERE `$e_by_col`=UNHEX('$e_by_val')";
-		$it = $link->query($q1);
-		if ($it === false) {
-			throw new UnderlyingStorageError($link->error);
-		}
+		$it = MyFun::query($link, $q1);
 		foreach ($it as $rec) {
 			/** @noinspection PhpUndefinedMethodInspection */
 			$x = $dataClassName::deserialize($rec[$dataColumn]);
@@ -134,10 +131,7 @@ class MyManyToMany implements GenericManyToMany
 			/** @noinspection SqlResolve */
 			$q1 = "SELECT 1 FROM `$this->tableNameEscaped`
 				WHERE `$e_left_col`=UNHEX('$e_left_val') AND `$e_right_col`=UNHEX('$e_right_val')";
-			$res = $link->query($q1);
-			if ($res === false) {
-				throw new UnderlyingStorageError($link->error);
-			}
+			$res = MyFun::query($link, $q1);
 			return $res->fetch_row() !== null;
 		});
 	}
@@ -156,10 +150,7 @@ class MyManyToMany implements GenericManyToMany
 			/** @noinspection SqlResolve */
 			$q1 = "INSERT IGNORE INTO `$this->tableNameEscaped` (`$e_left_col`, `$e_right_col`)
  					VALUES (UNHEX('$e_left_val'), UNHEX('$e_right_val'))";
-			$ok = $link->query($q1);
-			if ($ok === false) {
-				throw new UnderlyingStorageError($link->error);
-			}
+			MyFun::query($link, $q1);
 		});
 	}
 
@@ -177,10 +168,7 @@ class MyManyToMany implements GenericManyToMany
 			/** @noinspection SqlResolve */
 			$q1 = "DELETE FROM `$this->tableNameEscaped` 
 				WHERE `$e_left_col`=UNHEX('$e_left_val') AND `$e_right_col`=UNHEX('$e_right_val')";
-			$ok = $link->query($q1);
-			if ($ok === false) {
-				throw new UnderlyingStorageError($link->error);
-			}
+			MyFun::query($link, $q1);
 		});
 	}
 
@@ -216,10 +204,7 @@ class MyManyToMany implements GenericManyToMany
 		$e_val = $link->real_escape_string($value);
 		/** @noinspection SqlResolve */
 		$q1 = new PlainNode(0, "DELETE FROM `$this->tableNameEscaped` WHERE `$e_col`=UNHEX('$e_val')");
-		$ok = $link->query($q1);
-		if ($ok === false) {
-			throw new UnderlyingStorageError($link->error);
-		}
+		MyFun::query($link, $q1);
 	}
 
 	public function reset() : void
@@ -227,7 +212,7 @@ class MyManyToMany implements GenericManyToMany
 		$this->linkProvider->withLink(function (\mysqli $link) {
 			$e_left_col = str_replace('`', '``', $this->leftColumnName);
 			$e_right_col = str_replace('`', '``', $this->rightColumnName);
-			$link->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
+			MyFun::query($link, "DROP TABLE IF EXISTS `$this->tableNameEscaped`");
 			$tmp = $this->temporary ? 'TEMPORARY' : '';
 			$q1 = "CREATE $tmp TABLE `$this->tableNameEscaped` (
 				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -237,10 +222,7 @@ class MyManyToMany implements GenericManyToMany
 				UNIQUE(`$e_left_col`, `$e_right_col`),
 				UNIQUE(`$e_right_col`, `$e_left_col`)
 			) ENGINE=InnoDB";
-			$ok = $link->query($q1);
-			if ($ok === false) {
-				throw new UnderlyingStorageError($link->error);
-			}
+			MyFun::query($link, $q1);
 		});
 	}
 
