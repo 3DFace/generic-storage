@@ -10,7 +10,7 @@ class MyGenericStorageBatched2Test extends GenericStorageTest
 
 	protected function setUp()
 	{
-		$linkProvider = DbiFactory::getSameLinkProvider();
+		$linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
 			->setIdPropertyName('id')
 			->setRevisionPropertyName('revision')

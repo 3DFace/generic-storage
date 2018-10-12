@@ -16,7 +16,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 
 	protected function setUp()
 	{
-		$this->linkProvider = DbiFactory::getSameLinkProvider();
+		$this->linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $this->linkProvider, 'test_gen_storage'))
 			->setIdPropertyName('id')
 			->setRevisionPropertyName('revision')

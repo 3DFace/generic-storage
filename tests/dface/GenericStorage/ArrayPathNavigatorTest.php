@@ -27,7 +27,8 @@ class ArrayPathNavigatorTest extends TestCase
 		];
 	}
 
-	public function testGet(){
+	public function testGet() : void
+	{
 		$a = $this->x;
 
 		$this->assertEquals('p1', ArrayPathNavigator::getPropertyValue($a, ['p1']));
@@ -36,7 +37,8 @@ class ArrayPathNavigatorTest extends TestCase
 		$this->assertNull(ArrayPathNavigator::getPropertyValue($a, ['p3', 'p2', 'p1']));
 	}
 
-	public function testSet(){
+	public function testSet() : void
+	{
 
 		ArrayPathNavigator::setPropertyValue($this->x, ['p1'], 'x');
 		$this->assertEquals('x', $this->x['p1']);
@@ -52,7 +54,8 @@ class ArrayPathNavigatorTest extends TestCase
 
 	}
 
-	public function testUnset(){
+	public function testUnset() : void
+	{
 
 		ArrayPathNavigator::unsetProperty($this->x, ['p1']);
 		$this->assertArrayNotHasKey('p1', $this->x);

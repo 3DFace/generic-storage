@@ -5,10 +5,6 @@ namespace dface\GenericStorage\Mysql;
 
 use dface\GenericStorage\Generic\GenericManyToMany;
 use dface\GenericStorage\Generic\UnderlyingStorageError;
-use dface\Mysql\MysqlException;
-use dface\sql\placeholders\FormatterException;
-use dface\sql\placeholders\ParserException;
-use dface\sql\placeholders\PlainNode;
 
 class MyManyToMany implements GenericManyToMany
 {
@@ -59,11 +55,7 @@ class MyManyToMany implements GenericManyToMany
 	public function getAllByLeft($left) : \traversable
 	{
 		return $this->linkProvider->withLink(function (\mysqli $link) use ($left) {
-			try{
-				yield from $this->getAllByColumn($link, true, $left);
-			}catch (MysqlException|FormatterException|ParserException $e){
-				throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-			}
+			yield from $this->getAllByColumn($link, true, $left);
 		});
 	}
 
@@ -74,11 +66,7 @@ class MyManyToMany implements GenericManyToMany
 	public function getAllByRight($right) : \traversable
 	{
 		return $this->linkProvider->withLink(function (\mysqli $link) use ($right) {
-			try{
-				yield from $this->getAllByColumn($link, false, $right);
-			}catch (MysqlException|FormatterException|ParserException $e){
-				throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-			}
+			yield from $this->getAllByColumn($link, false, $right);
 		});
 	}
 
@@ -203,8 +191,7 @@ class MyManyToMany implements GenericManyToMany
 		$e_col = str_replace('`', '``', $column);
 		$e_val = $link->real_escape_string($value);
 		/** @noinspection SqlResolve */
-		$q1 = new PlainNode(0, "DELETE FROM `$this->tableNameEscaped` WHERE `$e_col`=UNHEX('$e_val')");
-		MyFun::query($link, $q1);
+		MyFun::query($link, "DELETE FROM `$this->tableNameEscaped` WHERE `$e_col`=UNHEX('$e_val')");
 	}
 
 	public function reset() : void

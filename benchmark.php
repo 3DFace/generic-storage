@@ -4,7 +4,6 @@
 use dface\GenericStorage\MySameLinkProvider;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
 use dface\GenericStorage\TestEntity;
-use dface\Mysql\MysqliConnection;
 use dface\sql\placeholders\DefaultFormatter;
 use dface\sql\placeholders\DefaultParser;
 
@@ -14,7 +13,6 @@ $link = mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_BASE);
 $link->set_charset(DB_CHARSET);
 $parser = new DefaultParser();
 $formatter = new DefaultFormatter();
-$dbi = new MysqliConnection($link, $parser, $formatter);
 
 $provider = new MySameLinkProvider($link);
 
@@ -39,15 +37,14 @@ $limit = 10000;
 /** @var TestEntity[] $data */
 $data = [];
 for($i=0; $i<$limit; $i++){
-	$id = new \dface\GenericStorage\TestId();
+	$id = \dface\GenericStorage\TestId::generate(16);
 	$e = new TestEntity($id, 'name-'.$i, 'name-'.$i.'@benchmark', new \dface\GenericStorage\TestData('asd', $i), 1);
 	$data[] = $e;
 }
 
 $started = microtime(true);
 
-/** @noinspection PhpUnhandledExceptionInspection */
-$dbi->begin();
+$link->autocommit(false);
 
 foreach($data as $e){
 	$id = $e->getId();
@@ -57,7 +54,6 @@ foreach($data as $e){
 	$storage->getItem($id);
 }
 
-/** @noinspection PhpUnhandledExceptionInspection */
-$dbi->rollback();
+$link->rollback();
 
 echo (microtime(true) - $started);

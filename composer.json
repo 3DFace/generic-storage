@@ -11,7 +11,7 @@
 	"require": {
 		"php": ">=7.1",
 		"dface/criteria": "dev-master",
-		"dface/mysql": "dev-master",
+		"dface/sql-placeholders": "dev-master",
 		"ext-mysqli": "*",
 		"ext-json": "*"
 	},

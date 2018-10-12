@@ -14,7 +14,7 @@ class MySetTest extends GenericSetTest
 
 	protected function setUp() : void
 	{
-		$this->linkProvider = DbiFactory::getSameLinkProvider();
+		$this->linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->set = new MySet(
 			$this->linkProvider,
 			'test_set',

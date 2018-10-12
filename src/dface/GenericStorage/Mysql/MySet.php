@@ -4,7 +4,6 @@
 namespace dface\GenericStorage\Mysql;
 
 use dface\GenericStorage\Generic\GenericSet;
-use dface\GenericStorage\Generic\UnderlyingStorageError;
 
 class MySet implements GenericSet
 {

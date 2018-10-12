@@ -20,11 +20,13 @@ class MemoryOrderDefComparatorTest extends TestCase {
 		$this->navigator = new ArrayGraphNavigator();
 	}
 
-	private function init(array $orderDef){
+	private function init(array $orderDef) : MemoryOrderDefComparator
+	{
 		return new MemoryOrderDefComparator($orderDef, $this->navigator, $this->comparator);
 	}
 
-	public function testAll(){
+	public function testAll() : void
+	{
 		$e1 = (new TestEntity(TestId::generate(16), 'Name1', 'Email', null, 1))->jsonSerialize();
 		$e2 = (new TestEntity(TestId::generate(16), 'Name2', 'Email', null, 1))->jsonSerialize();
 

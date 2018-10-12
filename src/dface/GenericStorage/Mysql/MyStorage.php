@@ -13,16 +13,12 @@ use dface\GenericStorage\Generic\ItemAlreadyExists;
 use dface\GenericStorage\Generic\UnderlyingStorageError;
 use dface\GenericStorage\Generic\UnexpectedRevision;
 use dface\GenericStorage\Generic\UniqueConstraintViolation;
-use dface\Mysql\DuplicateEntryException;
-use dface\Mysql\MysqlException;
-use dface\Mysql\MysqliConnection;
 use dface\sql\placeholders\DefaultFormatter;
 use dface\sql\placeholders\DefaultParser;
 use dface\sql\placeholders\Formatter;
 use dface\sql\placeholders\FormatterException;
 use dface\sql\placeholders\Parser;
 use dface\sql\placeholders\ParserException;
-use dface\sql\placeholders\PlainNode;
 
 class MyStorage implements GenericStorage
 {
@@ -154,18 +150,15 @@ class MyStorage implements GenericStorage
 	{
 		return $this->linkProvider->withLink(
 			function (\mysqli $link) use ($id) {
-				try{
-					$e_id = $link->real_escape_string($id);
-					/** @noinspection SqlResolve */
-					$it1 = MyFun::query($link, "SELECT `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
-					/** @noinspection LoopWhichDoesNotLoopInspection */
-					foreach ($it1 as $rec) {
-						return $this->deserialize($rec);
-					}
-					return null;
-				}catch (MysqlException|FormatterException|ParserException $e){
-					throw new UnderlyingStorageError($e->getMessage(), 0, $e);
+				$e_id = $link->real_escape_string($id);
+				/** @noinspection SqlResolve */
+				$it1 = MyFun::query($link,
+					"SELECT `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
+				/** @noinspection LoopWhichDoesNotLoopInspection */
+				foreach ($it1 as $rec) {
+					return $this->deserialize($rec);
 				}
+				return null;
 			});
 	}
 
@@ -176,25 +169,21 @@ class MyStorage implements GenericStorage
 	public function getItems($ids) : \traversable
 	{
 		return $this->linkProvider->withLink(function (\mysqli $link) use ($ids) {
-			try{
-				$sub_list = [];
-				foreach ($ids as $id) {
-					if (\count($sub_list) === $this->idBatchSize) {
-						$where = ' WHERE `$id` IN ('.implode(',', $sub_list).')';
-						$node = "$this->selectAllFromTable $where";
-						yield from $this->iterateOverDecoded($link, $node, [], 0);
-						$sub_list = [];
-					}
-					$e_id = $link->real_escape_string($id);
-					$sub_list[] = "UNHEX('$e_id')";
-				}
-				if ($sub_list) {
+			$sub_list = [];
+			foreach ($ids as $id) {
+				if (\count($sub_list) === $this->idBatchSize) {
 					$where = ' WHERE `$id` IN ('.implode(',', $sub_list).')';
 					$node = "$this->selectAllFromTable $where";
 					yield from $this->iterateOverDecoded($link, $node, [], 0);
+					$sub_list = [];
 				}
-			}catch (MysqlException|FormatterException|ParserException $e){
-				throw new UnderlyingStorageError($e->getMessage(), 0, $e);
+				$e_id = $link->real_escape_string($id);
+				$sub_list[] = "UNHEX('$e_id')";
+			}
+			if ($sub_list) {
+				$where = ' WHERE `$id` IN ('.implode(',', $sub_list).')';
+				$node = "$this->selectAllFromTable $where";
+				yield from $this->iterateOverDecoded($link, $node, [], 0);
 			}
 		});
 	}
@@ -222,25 +211,41 @@ class MyStorage implements GenericStorage
 			if ($expectedRevision === 0) {
 				try{
 					$this->insert($link, $id, $data, $add_column_set_node);
-				}catch (DuplicateEntryException $e){
-					throw new ItemAlreadyExists("Item '$id' already exists");
+				}catch (UnderlyingStorageError $e){
+					if ($duplicate = $this->detectDuplicateError($e->getMessage())) {
+						throw new ItemAlreadyExists("Item '$id' already exists");
+					}
+					throw $e;
 				}
 			}elseif ($expectedRevision > 0) {
 				$this->update($link, $id, $data, $add_column_set_node, $expectedRevision);
 			}elseif ($this->has_unique_secondary) {
 				try{
 					$this->insert($link, $id, $data, $add_column_set_node);
-				}catch (DuplicateEntryException $e){
-					if ($e->getKey() !== '$id') {
-						throw new UniqueConstraintViolation($e->getKey(), $e->getEntry(), $e->getMessage(),
-							$e->getCode(), $e);
+				}catch (UnderlyingStorageError $e){
+					if ($duplicate = $this->detectDuplicateError($e->getMessage())) {
+						[$key, $val] = $duplicate;
+						if ($key !== '$id') {
+							throw new UniqueConstraintViolation($key, $val, $e->getMessage(),
+								$e->getCode(), $e);
+						}
+						$this->update($link, $id, $data, $add_column_set_node, null);
+					}else {
+						throw $e;
 					}
-					$this->update($link, $id, $data, $add_column_set_node, null);
 				}
 			}else {
 				$this->insertOnDupUpdate($link, $id, $data, $add_column_set_node);
 			}
 		});
+	}
+
+	private function detectDuplicateError(string $message)
+	{
+		if (preg_match("/Duplicate entry '(.+)' for key '(.+)'/", $message, $m)) {
+			return [$m[2], $m[1]];
+		}
+		return false;
 	}
 
 	/**
@@ -276,12 +281,8 @@ class MyStorage implements GenericStorage
 	public function removeByCriteria(Criteria $criteria) : void
 	{
 		$this->linkProvider->withLink(function (\mysqli $link) use ($criteria) {
-			try{
-				/** @noinspection SqlResolve */
-				MyFun::query($link, "DELETE FROM `$this->tableNameEscaped` WHERE ".$this->makeWhere($link, $criteria));
-			}catch (MySqlException|FormatterException|ParserException $e){
-				throw new UnderlyingStorageError('MyStorage removeByCriteria query failed', 0, $e);
-			}
+			/** @noinspection SqlResolve */
+			MyFun::query($link, "DELETE FROM `$this->tableNameEscaped` WHERE ".$this->makeWhere($link, $criteria));
 		});
 	}
 
@@ -298,17 +299,15 @@ class MyStorage implements GenericStorage
 	 * @param string $id
 	 * @param string $data
 	 * @param string $add_column_set_node
-	 * @throws FormatterException
-	 * @throws MySqlException
-	 * @throws ParserException
+	 * @throws UnderlyingStorageError
 	 */
 	private function insert(\mysqli $link, string $id, string $data, string $add_column_set_node) : void
 	{
 		$e_id = $link->real_escape_string($id);
 		$e_data = $link->real_escape_string($data);
-		$dbi = new MysqliConnection($link, $this->parser, $this->formatter);
 		/** @noinspection SqlResolve */
-		$dbi->insert("INSERT INTO `$this->tableNameEscaped` SET `\$id`=UNHEX('$e_id'), `\$data`='$e_data' $add_column_set_node");
+		MyFun::query($link,
+			"INSERT INTO `$this->tableNameEscaped` SET `\$id`=UNHEX('$e_id'), `\$data`='$e_data' $add_column_set_node");
 	}
 
 	/**
@@ -339,7 +338,8 @@ class MyStorage implements GenericStorage
 			$affected = $link->affected_rows;
 			if ($affected === 0) {
 				/** @noinspection SqlResolve */
-				$res = MyFun::query($link, "SELECT `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
+				$res = MyFun::query($link,
+					"SELECT `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
 				$rec = $res->fetch_assoc();
 				$rev = $rec['$revision'];
 				throw new UnexpectedRevision("Item '$id' expected revision $expected_rev does not match actual $rev");
@@ -390,12 +390,8 @@ class MyStorage implements GenericStorage
 	public function listAll(array $orderDef = [], int $limit = 0) : \traversable
 	{
 		return $this->linkProvider->withLink(function (\mysqli $link) use ($orderDef, $limit) {
-			try{
-				$all = "$this->selectAllFromTable WHERE 1";
-				yield from $this->iterateOverDecoded($link, $all, $orderDef, $limit);
-			}catch (MysqlException|FormatterException|ParserException $e){
-				throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-			}
+			$all = "$this->selectAllFromTable WHERE 1";
+			yield from $this->iterateOverDecoded($link, $all, $orderDef, $limit);
 		});
 	}
 
@@ -408,12 +404,8 @@ class MyStorage implements GenericStorage
 	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : \traversable
 	{
 		return $this->linkProvider->withLink(function (\mysqli $link) use ($criteria, $orderDef, $limit) {
-			try{
-				$q = "$this->selectAllFromTable WHERE ".$this->makeWhere($link, $criteria);
-				yield from $this->iterateOverDecoded($link, $q, $orderDef, $limit);
-			}catch (MysqlException|FormatterException|ParserException $e){
-				throw new UnderlyingStorageError($e->getMessage(), 0, $e);
-			}
+			$q = "$this->selectAllFromTable WHERE ".$this->makeWhere($link, $criteria);
+			yield from $this->iterateOverDecoded($link, $q, $orderDef, $limit);
 		});
 	}
 
@@ -444,7 +436,8 @@ class MyStorage implements GenericStorage
 					$add_column_set_str = $this->createUpdateColumnsFragment($link, $arr);
 					$e_id = $link->real_escape_string($rec['$seq_id']);
 					/** @noinspection SqlResolve */
-					MyFun::query($link, "UPDATE `$this->tableNameEscaped` SET $add_column_set_str WHERE `\$seq_id`='$e_id'");
+					MyFun::query($link,
+						"UPDATE `$this->tableNameEscaped` SET $add_column_set_str WHERE `\$seq_id`='$e_id'");
 				}
 			}
 		});
@@ -456,7 +449,7 @@ class MyStorage implements GenericStorage
 	 * @param int $limit
 	 * @param $orderDef
 	 * @return \Generator|null
-	 * @throws MysqlException|FormatterException|ParserException
+	 * @throws UnderlyingStorageError
 	 */
 	private function iterateOverDecoded(\mysqli $link, string $q, array $orderDef, int $limit) : ?\Generator
 	{
@@ -481,24 +474,22 @@ class MyStorage implements GenericStorage
 	 * @param int $limit
 	 * @param array[] $orderDef
 	 * @return \Generator
-	 * @throws MysqlException|FormatterException|ParserException
+	 * @throws UnderlyingStorageError
 	 */
 	private function iterateOver(\mysqli $link, string $query, array $orderDef, int $limit) : \Generator
 	{
-		/** @var MysqliConnection $dbi */
-		$dbi = new MysqliConnection($link, $this->parser, $this->formatter);
-		yield from $this->iterateOverDbi($dbi, $query, $orderDef, $limit);
+		yield from $this->iterateOverLink($link, $query, $orderDef, $limit);
 	}
 
 	/**
-	 * @param MysqliConnection $dbi
+	 * @param \mysqli $link
 	 * @param string $baseQuery
 	 * @param array $orderDef
 	 * @param int $limit
 	 * @return \Generator
-	 * @throws MysqlException|FormatterException|ParserException
+	 * @throws UnderlyingStorageError
 	 */
-	private function iterateOverDbi(MysqliConnection $dbi, string $baseQuery, array $orderDef, int $limit) : \Generator
+	private function iterateOverLink(\mysqli $link, string $baseQuery, array $orderDef, int $limit) : \Generator
 	{
 		$use_batches = $this->batchListSize > 0;
 		if ($orderDef) {
@@ -506,9 +497,9 @@ class MyStorage implements GenericStorage
 
 				if ($use_batches) {
 					if ($orderDef[0][1]) {
-						yield from $this->iterateOverDbiBatchedBySeqId($dbi, $baseQuery, $limit);
+						yield from $this->iterateOverLinkBatchedBySeqId($link, $baseQuery, $limit);
 					}else {
-						yield from $this->iterateOverDbiBatchedBySeqIdDesc($dbi, $baseQuery, $limit);
+						yield from $this->iterateOverLinkBatchedBySeqIdDesc($link, $baseQuery, $limit);
 					}
 				}else {
 					$nodes = [
@@ -518,7 +509,7 @@ class MyStorage implements GenericStorage
 					if ($limit) {
 						$nodes[] = " LIMIT $limit";
 					}
-					yield from $this->iterate($dbi, implode(' ', $nodes));
+					yield from $this->iterate($link, implode(' ', $nodes));
 				}
 			}else {
 				$nodes = [
@@ -526,20 +517,20 @@ class MyStorage implements GenericStorage
 					$this->buildOrderBy($orderDef),
 				];
 				if ($use_batches) {
-					yield from $this->iterateOverDbiBatchedByLimit($dbi, implode(' ', $nodes), $limit);
+					yield from $this->iterateOverLinkBatchedByLimit($link, implode(' ', $nodes), $limit);
 				}else {
 					if ($limit) {
 						$nodes[] = " LIMIT $limit";
 					}
-					yield from $this->iterate($dbi, implode(' ', $nodes));
+					yield from $this->iterate($link, implode(' ', $nodes));
 				}
 			}
 		}elseif ($use_batches) {
-			yield from $this->iterateOverDbiBatchedBySeqId($dbi, $baseQuery, $limit);
+			yield from $this->iterateOverLinkBatchedBySeqId($link, $baseQuery, $limit);
 		}elseif ($limit) {
-			yield from $this->iterate($dbi, "$baseQuery LIMIT $limit");
+			yield from $this->iterate($link, "$baseQuery LIMIT $limit");
 		}else {
-			yield from $this->iterate($dbi, $baseQuery);
+			yield from $this->iterate($link, $baseQuery);
 		}
 	}
 
@@ -562,16 +553,14 @@ class MyStorage implements GenericStorage
 	}
 
 	/**
-	 * @param MysqliConnection $dbi
+	 * @param \mysqli $link
 	 * @param string $baseQuery
 	 * @return \Generator
-	 * @throws FormatterException
-	 * @throws MySqlException
-	 * @throws ParserException
+	 * @throws UnderlyingStorageError
 	 */
-	private function iterate(MysqliConnection $dbi, string $baseQuery) : \Generator
+	private function iterate(\mysqli $link, string $baseQuery) : \Generator
 	{
-		$it = $dbi->query(new PlainNode(0, $baseQuery));
+		$it = MyFun::query($link, $baseQuery);
 		try{
 			foreach ($it as $rec) {
 				yield $rec['$id'] => $rec;
@@ -582,15 +571,13 @@ class MyStorage implements GenericStorage
 	}
 
 	/**
-	 * @param MysqliConnection $dbi
+	 * @param \mysqli $link
 	 * @param string $baseQuery
 	 * @param int $limit
 	 * @return \Generator
-	 * @throws FormatterException
-	 * @throws MySqlException
-	 * @throws ParserException
+	 * @throws UnderlyingStorageError
 	 */
-	private function iterateOverDbiBatchedBySeqId(MysqliConnection $dbi, string $baseQuery, int $limit) : \Generator
+	private function iterateOverLinkBatchedBySeqId(\mysqli $link, string $baseQuery, int $limit) : \Generator
 	{
 		$last_seq_id = 0;
 		$loaded = 0;
@@ -603,8 +590,8 @@ class MyStorage implements GenericStorage
 					$batch_size -= $to - $limit;
 				}
 			}
-			$list = $dbi->query(new PlainNode(0,
-				"$baseQuery  AND `\$seq_id` > $last_seq_id ORDER BY `\$seq_id` LIMIT $batch_size"));
+			$list = MyFun::query($link,
+				"$baseQuery  AND `\$seq_id` > $last_seq_id ORDER BY `\$seq_id` LIMIT $batch_size");
 			try{
 				foreach ($list as $rec) {
 					$found++;
@@ -619,15 +606,13 @@ class MyStorage implements GenericStorage
 	}
 
 	/**
-	 * @param MysqliConnection $dbi
+	 * @param \mysqli $link
 	 * @param string $baseQuery
 	 * @param int $limit
 	 * @return \Generator
-	 * @throws FormatterException
-	 * @throws MySqlException
-	 * @throws ParserException
+	 * @throws UnderlyingStorageError
 	 */
-	private function iterateOverDbiBatchedBySeqIdDesc(MysqliConnection $dbi, string $baseQuery, int $limit) : \Generator
+	private function iterateOverLinkBatchedBySeqIdDesc(\mysqli $link, string $baseQuery, int $limit) : \Generator
 	{
 		$last_seq_id = PHP_INT_MAX;
 		$loaded = 0;
@@ -640,8 +625,8 @@ class MyStorage implements GenericStorage
 					$batch_size -= $to - $limit;
 				}
 			}
-			$list = $dbi->query(new PlainNode(0,
-				"$baseQuery  AND `\$seq_id` < $last_seq_id ORDER BY `\$seq_id` DESC LIMIT $batch_size"));
+			$list = MyFun::query($link,
+				"$baseQuery  AND `\$seq_id` < $last_seq_id ORDER BY `\$seq_id` DESC LIMIT $batch_size");
 			try{
 				foreach ($list as $rec) {
 					$found++;
@@ -656,15 +641,13 @@ class MyStorage implements GenericStorage
 	}
 
 	/**
-	 * @param MysqliConnection $dbi
+	 * @param \mysqli $link
 	 * @param string $baseQuery
 	 * @param int $limit
 	 * @return \Generator
-	 * @throws FormatterException
-	 * @throws MySqlException
-	 * @throws ParserException
+	 * @throws UnderlyingStorageError
 	 */
-	private function iterateOverDbiBatchedByLimit(MysqliConnection $dbi, string $baseQuery, int $limit) : \Generator
+	private function iterateOverLinkBatchedByLimit(\mysqli $link, string $baseQuery, int $limit) : \Generator
 	{
 		$loaded = 0;
 		do {
@@ -676,7 +659,7 @@ class MyStorage implements GenericStorage
 					$batch_size -= $to - $limit;
 				}
 			}
-			$list = $dbi->query(new PlainNode(0, "$baseQuery LIMIT $loaded, $batch_size"));
+			$list = MyFun::query($link, "$baseQuery LIMIT $loaded, $batch_size");
 			try{
 				foreach ($list as $rec) {
 					$found++;

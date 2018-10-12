@@ -155,9 +155,11 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assertSetIs([$l3, $l4], $byRight);
 	}
 
-	private function assertSetIs(array $expected, array $set){
+	private function assertSetIs(array $expected, array $set) : void
+	{
 		$this->assertCount(\count($expected), $set);
 		foreach($expected as $e){
+			/** @noinspection PhpUnitTestsInspection */
 			$this->assertTrue(\in_array($e, $set, false));
 		}
 	}

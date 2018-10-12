@@ -14,7 +14,7 @@ class MyManyToManyTest extends GenericManyToManyTest
 
 	protected function setUp() : void
 	{
-		$this->linkProvider = DbiFactory::getSameLinkProvider();
+		$this->linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->assoc = new MyManyToMany(
 			$this->linkProvider,
 			'test_many_to_many',

@@ -13,7 +13,7 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest
 
 	protected function setUp()
 	{
-		$linkProvider = DbiFactory::getSameLinkProvider();
+		$linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
 			->setIdPropertyName('id')
 			->setRevisionPropertyName('revision')
@@ -36,7 +36,7 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest
 
 	public function testBatchListSizeProtected() : void
 	{
-		$linkProvider = DbiFactory::getSameLinkProvider();
+		$linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->expectException(\InvalidArgumentException::class);
 		(new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
 			->setBatchListSize(-1)
@@ -45,7 +45,7 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest
 
 	public function testIdBatchSizeProtected() : void
 	{
-		$linkProvider = DbiFactory::getSameLinkProvider();
+		$linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->expectException(\InvalidArgumentException::class);
 		(new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
 			->setIdBatchSize(-1)
