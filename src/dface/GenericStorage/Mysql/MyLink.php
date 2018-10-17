@@ -26,4 +26,9 @@ interface MyLink
 	 */
 	public function getAffectedRows() : int;
 
+	/**
+	 * @return mixed
+	 */
+	public function getInsertedId();
+
 }

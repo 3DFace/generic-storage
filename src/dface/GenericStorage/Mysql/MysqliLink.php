@@ -47,6 +47,11 @@ class MysqliLink implements MyLink
 		return $this->mysqli->affected_rows;
 	}
 
+	public function getInsertedId()
+	{
+		return $this->mysqli->insert_id;
+	}
+
 	public function getMysqli() : \mysqli
 	{
 		return $this->mysqli;
