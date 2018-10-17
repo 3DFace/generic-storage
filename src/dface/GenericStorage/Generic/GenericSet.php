@@ -3,7 +3,8 @@
 
 namespace dface\GenericStorage\Generic;
 
-interface GenericSet {
+interface GenericSet
+{
 
 	/**
 	 * @return array|\traversable

@@ -5,7 +5,8 @@ namespace dface\GenericStorage\Generic;
 
 use dface\criteria\Criteria;
 
-interface GenericStorage {
+interface GenericStorage
+{
 
 	/**
 	 * @param $id

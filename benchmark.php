@@ -1,8 +1,8 @@
 <?php
 /* author: Ponomarev Denis <ponomarev@gmail.com> */
 
-use dface\GenericStorage\MySameLinkProvider;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
+use dface\GenericStorage\MysqliSameLinkProvider;
 use dface\GenericStorage\TestEntity;
 use dface\sql\placeholders\DefaultFormatter;
 use dface\sql\placeholders\DefaultParser;
@@ -14,7 +14,7 @@ $link->set_charset(DB_CHARSET);
 $parser = new DefaultParser();
 $formatter = new DefaultFormatter();
 
-$provider = new MySameLinkProvider($link);
+$provider = new MysqliSameLinkProvider($link);
 
 $storage = (new MyStorageBuilder(TestEntity::class, $provider, 'test_gen_storage'))
 	->setIdPropertyName('id')

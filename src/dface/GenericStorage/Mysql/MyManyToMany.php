@@ -54,7 +54,7 @@ class MyManyToMany implements GenericManyToMany
 	 */
 	public function getAllByLeft($left) : \traversable
 	{
-		return $this->linkProvider->withLink(function (\mysqli $link) use ($left) {
+		return $this->linkProvider->withLink(function (MyLink $link) use ($left) {
 			yield from $this->getAllByColumn($link, true, $left);
 		});
 	}
@@ -65,20 +65,20 @@ class MyManyToMany implements GenericManyToMany
 	 */
 	public function getAllByRight($right) : \traversable
 	{
-		return $this->linkProvider->withLink(function (\mysqli $link) use ($right) {
+		return $this->linkProvider->withLink(function (MyLink $link) use ($right) {
 			yield from $this->getAllByColumn($link, false, $right);
 		});
 	}
 
 	/**
-	 * @param \mysqli $link
+	 * @param MyLink $link
 	 * @param bool $byLeft
 	 * @param string $byValue
 	 * @return \Generator
 	 * @throws UnderlyingStorageError
 	 */
 	private function getAllByColumn(
-		\mysqli $link,
+		MyLink $link,
 		bool $byLeft,
 		string $byValue
 	) : \Generator {
@@ -93,10 +93,10 @@ class MyManyToMany implements GenericManyToMany
 			$dataColumn = $this->leftColumnName;
 			$dataClassName = $this->leftClassName;
 		}
-		$e_by_val = $link->real_escape_string($byValue);
+		$e_by_val = $link->escapeString($byValue);
 		/** @noinspection SqlResolve */
 		$q1 = "SELECT HEX(`$e_data_col`) `$e_data_col` FROM `$this->tableNameEscaped` WHERE `$e_by_col`=UNHEX('$e_by_val')";
-		$it = MyFun::query($link, $q1);
+		$it = $link->query($q1)->iterate();
 		foreach ($it as $rec) {
 			/** @noinspection PhpUndefinedMethodInspection */
 			$x = $dataClassName::deserialize($rec[$dataColumn]);
@@ -111,16 +111,16 @@ class MyManyToMany implements GenericManyToMany
 	 */
 	public function has($left, $right) : bool
 	{
-		return $this->linkProvider->withLink(function (\mysqli $link) use ($left, $right) {
+		return $this->linkProvider->withLink(function (MyLink $link) use ($left, $right) {
 			$e_left_col = str_replace('`', '``', $this->leftColumnName);
 			$e_right_col = str_replace('`', '``', $this->rightColumnName);
-			$e_left_val = $link->real_escape_string($left);
-			$e_right_val = $link->real_escape_string($right);
+			$e_left_val = $link->escapeString($left);
+			$e_right_val = $link->escapeString($right);
 			/** @noinspection SqlResolve */
 			$q1 = "SELECT 1 FROM `$this->tableNameEscaped`
 				WHERE `$e_left_col`=UNHEX('$e_left_val') AND `$e_right_col`=UNHEX('$e_right_val')";
-			$res = MyFun::query($link, $q1);
-			return $res->fetch_row() !== null;
+			$res = $link->query($q1);
+			return $res->fetchRow() !== null;
 		});
 	}
 
@@ -130,15 +130,15 @@ class MyManyToMany implements GenericManyToMany
 	 */
 	public function add($left, $right) : void
 	{
-		$this->linkProvider->withLink(function (\mysqli $link) use ($left, $right) {
+		$this->linkProvider->withLink(function (MyLink $link) use ($left, $right) {
 			$e_left_col = str_replace('`', '``', $this->leftColumnName);
 			$e_right_col = str_replace('`', '``', $this->rightColumnName);
-			$e_left_val = $link->real_escape_string($left);
-			$e_right_val = $link->real_escape_string($right);
+			$e_left_val = $link->escapeString($left);
+			$e_right_val = $link->escapeString($right);
 			/** @noinspection SqlResolve */
 			$q1 = "INSERT IGNORE INTO `$this->tableNameEscaped` (`$e_left_col`, `$e_right_col`)
  					VALUES (UNHEX('$e_left_val'), UNHEX('$e_right_val'))";
-			MyFun::query($link, $q1);
+			$link->query($q1);
 		});
 	}
 
@@ -148,15 +148,15 @@ class MyManyToMany implements GenericManyToMany
 	 */
 	public function remove($left, $right) : void
 	{
-		$this->linkProvider->withLink(function (\mysqli $link) use ($left, $right) {
+		$this->linkProvider->withLink(function (MyLink $link) use ($left, $right) {
 			$e_left_col = str_replace('`', '``', $this->leftColumnName);
 			$e_right_col = str_replace('`', '``', $this->rightColumnName);
-			$e_left_val = $link->real_escape_string($left);
-			$e_right_val = $link->real_escape_string($right);
+			$e_left_val = $link->escapeString($left);
+			$e_right_val = $link->escapeString($right);
 			/** @noinspection SqlResolve */
 			$q1 = "DELETE FROM `$this->tableNameEscaped` 
 				WHERE `$e_left_col`=UNHEX('$e_left_val') AND `$e_right_col`=UNHEX('$e_right_val')";
-			MyFun::query($link, $q1);
+			$link->query($q1);
 		});
 	}
 
@@ -165,7 +165,7 @@ class MyManyToMany implements GenericManyToMany
 	 */
 	public function clearLeft($left) : void
 	{
-		$this->linkProvider->withLink(function (\mysqli $link) use ($left) {
+		$this->linkProvider->withLink(function (MyLink $link) use ($left) {
 			$this->clearByColumn($link, $this->leftColumnName, $left);
 		});
 	}
@@ -175,31 +175,31 @@ class MyManyToMany implements GenericManyToMany
 	 */
 	public function clearRight($right) : void
 	{
-		$this->linkProvider->withLink(function (\mysqli $link) use ($right) {
+		$this->linkProvider->withLink(function (MyLink $link) use ($right) {
 			$this->clearByColumn($link, $this->rightColumnName, $right);
 		});
 	}
 
 	/**
-	 * @param \mysqli $link
+	 * @param MyLink $link
 	 * @param string $column
 	 * @param string $value
 	 * @throws UnderlyingStorageError
 	 */
-	private function clearByColumn(\mysqli $link, string $column, string $value) : void
+	private function clearByColumn(MyLink $link, string $column, string $value) : void
 	{
 		$e_col = str_replace('`', '``', $column);
-		$e_val = $link->real_escape_string($value);
+		$e_val = $link->escapeString($value);
 		/** @noinspection SqlResolve */
-		MyFun::query($link, "DELETE FROM `$this->tableNameEscaped` WHERE `$e_col`=UNHEX('$e_val')");
+		$link->query("DELETE FROM `$this->tableNameEscaped` WHERE `$e_col`=UNHEX('$e_val')");
 	}
 
 	public function reset() : void
 	{
-		$this->linkProvider->withLink(function (\mysqli $link) {
+		$this->linkProvider->withLink(function (MyLink $link) {
 			$e_left_col = str_replace('`', '``', $this->leftColumnName);
 			$e_right_col = str_replace('`', '``', $this->rightColumnName);
-			MyFun::query($link, "DROP TABLE IF EXISTS `$this->tableNameEscaped`");
+			$link->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
 			$tmp = $this->temporary ? 'TEMPORARY' : '';
 			$q1 = "CREATE $tmp TABLE `$this->tableNameEscaped` (
 				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -209,7 +209,7 @@ class MyManyToMany implements GenericManyToMany
 				UNIQUE(`$e_left_col`, `$e_right_col`),
 				UNIQUE(`$e_right_col`, `$e_left_col`)
 			) ENGINE=InnoDB";
-			MyFun::query($link, $q1);
+			$link->query($q1);
 		});
 	}
 

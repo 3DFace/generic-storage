@@ -9,7 +9,7 @@ use dface\GenericStorage\Mysql\MyManyToMany;
 class MyManyToManyTest extends GenericManyToManyTest
 {
 
-	/** @var MySameLinkProvider */
+	/** @var MysqliSameLinkProvider */
 	private $linkProvider;
 
 	protected function setUp() : void

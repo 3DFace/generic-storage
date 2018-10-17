@@ -11,7 +11,7 @@ use dface\GenericStorage\Mysql\MyStorageBuilder;
 class MyGenericStorageNonBatchedTest extends GenericStorageTest
 {
 
-	/** @var MySameLinkProvider */
+	/** @var MysqliSameLinkProvider */
 	protected $linkProvider;
 
 	protected function setUp()
@@ -33,6 +33,9 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 		$this->storage->reset();
 	}
 
+	/**
+	 * @throws UnderlyingStorageError
+	 */
 	private function broke() : void
 	{
 		/** @noinspection SqlResolve */

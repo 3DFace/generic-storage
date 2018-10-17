@@ -3,7 +3,7 @@
 
 namespace dface\GenericStorage\Generic;
 
-class ItemAlreadyExists extends GenericStorageError
+class ItemAlreadyExists extends \Exception implements GenericStorageError
 {
 
 }

@@ -4,11 +4,12 @@
 namespace dface\GenericStorage;
 
 use dface\GenericStorage\Mysql\MyLinkProvider;
+use dface\GenericStorage\Mysql\MysqliLink;
 
-class MySameLinkProvider implements MyLinkProvider
+class MysqliSameLinkProvider implements MyLinkProvider
 {
 
-	/** @var \mysqli */
+	/** @var MysqliLink */
 	private $link;
 
 	/**
@@ -16,7 +17,7 @@ class MySameLinkProvider implements MyLinkProvider
 	 */
 	public function __construct(\mysqli $link)
 	{
-		$this->link = $link;
+		$this->link = new MysqliLink($link);
 	}
 
 	public function withLink($callback)
@@ -24,7 +25,7 @@ class MySameLinkProvider implements MyLinkProvider
 		return $callback($this->link);
 	}
 
-	public function getLink() : \mysqli
+	public function getLink() : MysqliLink
 	{
 		return $this->link;
 	}

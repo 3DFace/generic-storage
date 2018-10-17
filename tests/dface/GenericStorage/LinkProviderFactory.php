@@ -6,9 +6,9 @@ namespace dface\GenericStorage;
 class LinkProviderFactory
 {
 
-	public static function createLinkProvider() : MySameLinkProvider
+	public static function createLinkProvider() : MysqliSameLinkProvider
 	{
-		return new MySameLinkProvider(self::getStaticConnection());
+		return new MysqliSameLinkProvider(self::getStaticConnection());
 	}
 
 	public static function getStaticConnection() : \mysqli

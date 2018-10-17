@@ -35,12 +35,12 @@ class MySet implements GenericSet
 	 */
 	public function contains($id) : bool
 	{
-		return $this->linkProvider->withLink(function (\mysqli $link) use ($id) {
-			$e_id = $link->real_escape_string($id);
+		return $this->linkProvider->withLink(function (MyLink $link) use ($id) {
+			$e_id = $link->escapeString($id);
 			/** @noinspection SqlResolve */
 			$q1 = "SELECT 1 FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')";
-			$res = MyFun::query($link, $q1);
-			return $res->fetch_row() !== null;
+			$res = $link->query($q1);
+			return $res->fetchRow() !== null;
 		});
 	}
 
@@ -49,11 +49,10 @@ class MySet implements GenericSet
 	 */
 	public function add($id) : void
 	{
-		$this->linkProvider->withLink(function (\mysqli $link) use ($id) {
-			$e_id = $link->real_escape_string($id);
+		$this->linkProvider->withLink(function (MyLink $link) use ($id) {
+			$e_id = $link->escapeString($id);
 			/** @noinspection SqlResolve */
-			$q1 = "INSERT IGNORE INTO `$this->tableNameEscaped` (`\$id`) VALUES (UNHEX('$e_id'))";
-			MyFun::query($link, $q1);
+			$link->query("INSERT IGNORE INTO `$this->tableNameEscaped` (`\$id`) VALUES (UNHEX('$e_id'))");
 		});
 	}
 
@@ -62,11 +61,10 @@ class MySet implements GenericSet
 	 */
 	public function remove($id) : void
 	{
-		$this->linkProvider->withLink(function (\mysqli $link) use ($id) {
-			$e_id = $link->real_escape_string($id);
+		$this->linkProvider->withLink(function (MyLink $link) use ($id) {
+			$e_id = $link->escapeString($id);
 			/** @noinspection SqlResolve */
-			$q1 = "DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')";
-			MyFun::query($link, $q1);
+			$link->query("DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
 		});
 	}
 
@@ -75,10 +73,9 @@ class MySet implements GenericSet
 	 */
 	public function iterate() : \traversable
 	{
-		return $this->linkProvider->withLink(function (\mysqli $link) {
+		return $this->linkProvider->withLink(function (MyLink $link) {
 			/** @noinspection SqlResolve */
-			$q1 = "SELECT HEX(`\$id`) `\$id` FROM `$this->tableNameEscaped`";
-			$it = MyFun::query($link, $q1);
+			$it = $link->query("SELECT HEX(`\$id`) `\$id` FROM `$this->tableNameEscaped`")->iterate();
 			$className = $this->className;
 			foreach ($it as $rec) {
 				/** @noinspection PhpUndefinedMethodInspection */
@@ -90,15 +87,15 @@ class MySet implements GenericSet
 
 	public function reset() : void
 	{
-		$this->linkProvider->withLink(function (\mysqli $link) {
-			MyFun::query($link, "DROP TABLE IF EXISTS `$this->tableNameEscaped`");
+		$this->linkProvider->withLink(function (MyLink $link) {
+			$link->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
 			$tmp = $this->temporary ? 'TEMPORARY' : '';
 			$q1 = "CREATE $tmp TABLE `$this->tableNameEscaped` (
 				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 				`\$id` BINARY(16) NOT NULL UNIQUE,
 				`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 			) ENGINE=InnoDB";
-			MyFun::query($link, $q1);
+			$link->query($q1);
 		});
 	}
 

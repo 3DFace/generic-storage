@@ -12,10 +12,11 @@ class ArrayPathNavigator
 	 * @param $default
 	 * @return mixed
 	 */
-	public static function getPropertyValue(array $arr, array $path, $default = null) {
+	public static function getPropertyValue(array $arr, array $path, $default = null)
+	{
 		$x = $arr;
-		foreach($path as $p){
-			if(!isset($x[$p])){
+		foreach ($path as $p) {
+			if (!isset($x[$p])) {
 				return $default;
 			}
 			$x = $x[$p];
@@ -28,10 +29,11 @@ class ArrayPathNavigator
 	 * @param array $path
 	 * @param $value
 	 */
-	public static function setPropertyValue(array &$arr, array $path, $value) : void {
+	public static function setPropertyValue(array &$arr, array $path, $value) : void
+	{
 		$x = &$arr;
-		foreach($path as $p){
-			if(!isset($x[$p])){
+		foreach ($path as $p) {
+			if (!isset($x[$p])) {
 				$x[$p] = [];
 			}
 			$x = &$x[$p];
@@ -43,8 +45,9 @@ class ArrayPathNavigator
 	 * @param array $arr
 	 * @param array $path
 	 */
-	public static function unsetProperty(array &$arr, array $path) : void {
-		if(!$path || !$arr){
+	public static function unsetProperty(array &$arr, array $path) : void
+	{
+		if (!$path || !$arr) {
 			return;
 		}
 		$end = array_pop($path);

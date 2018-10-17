@@ -3,6 +3,7 @@
 
 namespace dface\GenericStorage\Generic;
 
-class UnderlyingStorageError extends GenericStorageError {
+class UnderlyingStorageError extends \Exception implements GenericStorageError
+{
 
 }

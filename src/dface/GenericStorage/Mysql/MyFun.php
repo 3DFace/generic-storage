@@ -9,12 +9,12 @@ abstract class MyFun
 {
 
 	/**
-	 * @param \mysqli $link
+	 * @param MyLink $link
 	 * @param string $query
-	 * @return bool|\mysqli_result
+	 * @return bool|\Traversable
 	 * @throws UnderlyingStorageError
 	 */
-	public static function query(\mysqli $link, string $query){
+	public static function query(MyLink $link, string $query){
 		try{
 			$result = $link->query($query);
 		}catch (\Exception $e){

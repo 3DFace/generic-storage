@@ -9,7 +9,7 @@ use dface\GenericStorage\Mysql\MySet;
 class MySetTest extends GenericSetTest
 {
 
-	/** @var MySameLinkProvider */
+	/** @var MysqliSameLinkProvider */
 	private $linkProvider;
 
 	protected function setUp() : void
@@ -23,6 +23,9 @@ class MySetTest extends GenericSetTest
 		$this->set->reset();
 	}
 
+	/**
+	 * @throws UnderlyingStorageError
+	 */
 	private function broke() : void
 	{
 		/** @noinspection SqlResolve */

@@ -3,7 +3,8 @@
 
 namespace dface\GenericStorage\Generic;
 
-interface GenericManyToMany {
+interface GenericManyToMany
+{
 
 	/**
 	 * @param $left
@@ -28,7 +29,6 @@ interface GenericManyToMany {
 	 * @throws GenericStorageError
 	 */
 	public function has($left, $right) : bool;
-
 
 	/**
 	 * @param $left

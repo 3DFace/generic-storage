@@ -3,7 +3,8 @@
 
 namespace dface\GenericStorage\Generic;
 
-class UniqueConstraintViolation extends GenericStorageError {
+class UniqueConstraintViolation extends \Exception implements GenericStorageError
+{
 
 	/** @var string */
 	private $attribute;
@@ -18,17 +19,20 @@ class UniqueConstraintViolation extends GenericStorageError {
 	 * @param int $code
 	 * @param \Exception $prev
 	 */
-	public function __construct(string $attribute, $value, $message = '', $code = 0, $prev = null) {
+	public function __construct(string $attribute, $value, $message = '', $code = 0, $prev = null)
+	{
 		parent::__construct($message, $code, $prev);
 		$this->attribute = $attribute;
 		$this->value = $value;
 	}
 
-	public function getAttribute() : string {
+	public function getAttribute() : string
+	{
 		return $this->attribute;
 	}
 
-	public function getValue() {
+	public function getValue()
+	{
 		return $this->value;
 	}
 
