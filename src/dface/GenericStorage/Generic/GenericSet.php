@@ -37,4 +37,9 @@ interface GenericSet
 	 */
 	public function remove($id) : void;
 
+	/**
+	 * @throws UnderlyingStorageError
+	 */
+	public function clear() : void;
+
 }

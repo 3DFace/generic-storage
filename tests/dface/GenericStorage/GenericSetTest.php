@@ -47,4 +47,14 @@ abstract class GenericSetTest extends TestCase {
 		$this->assertEquals([], iterator_to_array($this->set->iterate()));
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
+	public function testEmptyAfterClear() : void {
+		$this->set->add(TestId::generate($this->getIdLength()));
+		$this->set->add(TestId::generate($this->getIdLength()));
+		$this->set->clear();
+		$this->assertEquals([], iterator_to_array($this->set->iterate()));
+	}
+
 }

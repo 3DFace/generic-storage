@@ -155,6 +155,29 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assertSetIs([$l3, $l4], $byRight);
 	}
 
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
+	public function testEmptyAfterClear() : void {
+		$l1 = TestId::generate($this->getIdLength());
+		$l2 = TestId::generate($this->getIdLength());
+		$l3 = TestId::generate($this->getIdLength());
+		$l4 = TestId::generate($this->getIdLength());
+		$r1 = TestId::generate($this->getIdLength());
+		$r2 = TestId::generate($this->getIdLength());
+
+		$this->assoc->add($l1, $r1);
+		$this->assoc->add($l2, $r1);
+		$this->assoc->add($l3, $r2);
+		$this->assoc->add($l4, $r2);
+		$this->assoc->clear();
+
+		$this->assertFalse($this->assoc->has($l1, $r1));
+		$this->assertFalse($this->assoc->has($l2, $r1));
+		$this->assertFalse($this->assoc->has($l3, $r2));
+		$this->assertFalse($this->assoc->has($l4, $r2));
+	}
+
 	private function assertSetIs(array $expected, array $set) : void
 	{
 		$this->assertCount(\count($expected), $set);

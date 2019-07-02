@@ -60,4 +60,9 @@ interface GenericManyToMany
 	 */
 	public function clearRight($right) : void;
 
+	/**
+	 * @throws UnderlyingStorageError
+	 */
+	public function clear() : void;
+
 }

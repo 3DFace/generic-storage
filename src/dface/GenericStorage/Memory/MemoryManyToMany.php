@@ -4,6 +4,7 @@
 namespace dface\GenericStorage\Memory;
 
 use dface\GenericStorage\Generic\GenericManyToMany;
+use dface\GenericStorage\Generic\UnderlyingStorageError;
 
 class MemoryManyToMany implements GenericManyToMany {
 
@@ -47,6 +48,12 @@ class MemoryManyToMany implements GenericManyToMany {
 
 	public function clearRight($right) : void {
 		unset($this->right[(string)$right]);
+	}
+
+	public function clear() : void
+	{
+		$this->left = [];
+		$this->right = [];
 	}
 
 }

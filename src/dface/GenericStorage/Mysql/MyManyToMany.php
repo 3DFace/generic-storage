@@ -180,6 +180,14 @@ class MyManyToMany implements GenericManyToMany
 		});
 	}
 
+	public function clear() : void
+	{
+		$this->linkProvider->withLink(function (MyLink $link){
+			/** @noinspection SqlResolve */
+			$link->query("DELETE FROM `$this->tableNameEscaped`");
+		});
+	}
+
 	/**
 	 * @param MyLink $link
 	 * @param string $column

@@ -68,6 +68,14 @@ class MySet implements GenericSet
 		});
 	}
 
+	public function clear() : void
+	{
+		$this->linkProvider->withLink(function (MyLink $link) {
+			/** @noinspection SqlResolve */
+			$link->query("DELETE FROM `$this->tableNameEscaped`");
+		});
+	}
+
 	/**
 	 * @return \traversable
 	 */
