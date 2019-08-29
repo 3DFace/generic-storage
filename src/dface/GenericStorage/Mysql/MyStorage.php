@@ -252,7 +252,7 @@ class MyStorage implements GenericStorage
 	 */
 	private function serialize($id, array $arr) : ?string
 	{
-		$data = json_encode($arr, JSON_UNESCAPED_UNICODE);
+		$data = \json_encode($arr, JSON_UNESCAPED_UNICODE);
 		if (($len = \strlen($data)) > $this->dataMaxSize) {
 			throw new UnderlyingStorageError("Can't write $len bytes as $this->className#$id data at ".self::class);
 		}
@@ -419,13 +419,19 @@ class MyStorage implements GenericStorage
 		return $this->formatter->format($node, $args, [$link, 'escapeString']);
 	}
 
-	public function updateColumns() : void
+	public function updateColumns($full_deserialize = false) : void
 	{
-		$this->linkProvider->withLink(function (MyLink $link) {
+		$this->linkProvider->withLink(function (MyLink $link) use ($full_deserialize){
 			if ($this->add_columns) {
 				$it = $this->iterateOver($link, "$this->selectAllFromTable WHERE 1 ", [], 0);
 				foreach ($it as $rec) {
-					$arr = \json_decode($rec['$data'], true);
+					if($full_deserialize){
+						/** @var \JsonSerializable $obj */
+						$obj = $this->deserialize($rec);
+						$arr = $obj->jsonSerialize();
+					}else{
+						$arr = \json_decode($rec['$data'], true);
+					}
 					// TODO: don't update if columns contain correct values
 					$add_column_set_str = $this->createUpdateColumnsFragment($link, $arr);
 					$e_id = $link->escapeString($rec['$seq_id']);
@@ -454,7 +460,7 @@ class MyStorage implements GenericStorage
 
 	private function deserialize(array $rec)
 	{
-		$arr = json_decode($rec['$data'], true);
+		$arr = \json_decode($rec['$data'], true);
 		if ($this->revisionPropertyPath !== null) {
 			ArrayPathNavigator::setPropertyValue($arr, $this->revisionPropertyPath, $rec['$revision']);
 		}
@@ -650,7 +656,7 @@ class MyStorage implements GenericStorage
 	public function reset() : void
 	{
 		$this->linkProvider->withLink(function (MyLink $link) {
-			$add_columns = array_map(function ($type, $i) {
+			$add_columns = \array_map(function ($type, $i) {
 				$type = $type['type'] ?? $type;
 				return "`$i` $type";
 			}, $this->add_columns, array_keys($this->add_columns));
