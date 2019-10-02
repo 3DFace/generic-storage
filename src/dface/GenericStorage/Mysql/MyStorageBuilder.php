@@ -17,6 +17,8 @@ class MyStorageBuilder {
 	private $idLength = 16;
 	/** @var string */
 	private $revisionPropertyName;
+	/** @var string */
+	private $seqIdPropertyName;
 	/** @var string[] */
 	private $add_generated_columns = [];
 	/** @var string[] */
@@ -56,6 +58,11 @@ class MyStorageBuilder {
 
 	public function setRevisionPropertyName(string $revisionPropertyName) : MyStorageBuilder {
 		$this->revisionPropertyName = $revisionPropertyName;
+		return $this;
+	}
+
+	public function setSeqIdPropertyName(string $seqIdPropertyName) : MyStorageBuilder {
+		$this->seqIdPropertyName = $seqIdPropertyName;
 		return $this;
 	}
 
@@ -121,6 +128,7 @@ class MyStorageBuilder {
 			$this->idPropertyName,
 			$this->idLength,
 			$this->revisionPropertyName,
+			$this->seqIdPropertyName,
 			$this->add_generated_columns,
 			$this->add_columns,
 			$this->add_indexes,

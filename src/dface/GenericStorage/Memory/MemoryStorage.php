@@ -27,9 +27,16 @@ class MemoryStorage implements GenericStorage
 	private $comparator;
 	/** @var string[]|null */
 	private $revisionPropertyPath;
+	/** @var string[]|null */
+	private $seqIdPropertyPath;
+	/** @var int int */
+	private $autoIncrement = 0;
 
-	public function __construct(string $className, string $revisionPropertyName = null)
-	{
+	public function __construct(
+		string $className,
+		string $revisionPropertyName = null,
+		string $seqIdPropertyName = null
+	) {
 		$this->className = $className;
 		$this->comparator = new SimpleComparator();
 		$this->navigator = new ArrayGraphNavigator();
@@ -40,15 +47,19 @@ class MemoryStorage implements GenericStorage
 		if ($revisionPropertyName !== null) {
 			$this->revisionPropertyPath = explode('/', $revisionPropertyName);
 		}
+		if ($seqIdPropertyName !== null) {
+			$this->seqIdPropertyPath = explode('/', $seqIdPropertyName);
+		}
 	}
 
 	public function getItem($id) : ?\JsonSerializable
 	{
-		[$arr, $rev] = $this->storage[(string)$id] ?? [null, 0];
-		if($arr === null){
+		$record = $this->storage[(string)$id] ?? null;
+		if ($record === null) {
 			return null;
 		}
-		return $this->deserialize($arr, $rev);
+		[$arr, $rev, $seq_id] = $record;
+		return $this->deserialize($arr, $rev, $seq_id);
 	}
 
 	/**
@@ -60,8 +71,8 @@ class MemoryStorage implements GenericStorage
 		foreach ($ids as $id) {
 			$k = (string)$id;
 			if (isset($this->storage[$k])) {
-				[$arr, $rev] = $this->storage[$k];
-				yield $k => $this->deserialize($arr, $rev);
+				[$arr, $rev, $seq_id] = $this->storage[$k];
+				yield $k => $this->deserialize($arr, $rev, $seq_id);
 			}
 		}
 	}
@@ -79,14 +90,19 @@ class MemoryStorage implements GenericStorage
 			throw new InvalidDataType("Stored item must be instance of $this->className");
 		}
 		$k = (string)$id;
-		[, $rev] = $this->storage[$k] ?? [null, 0];
-		if($expectedRevision !== null && $expectedRevision !== $rev) {
+		$record = $this->storage[$k] ?? null;
+		$this->autoIncrement++;
+		if($record === null){
+			$record = [null, 0, $this->autoIncrement];
+		}
+		[, $rev, $seq_id] = $record;
+		if ($expectedRevision !== null && $expectedRevision !== $rev) {
 			if ($expectedRevision === 0) {
 				throw new ItemAlreadyExists("Item '$id' already exists");
 			}
 			throw new UnexpectedRevision("Item '$id' expected revision $expectedRevision does not match actual $rev");
 		}
-		$this->storage[$k] = [$item->jsonSerialize(), $rev + 1];
+		$this->storage[$k] = [$item->jsonSerialize(), $rev + 1, $seq_id];
 	}
 
 	public function removeItem($id) : void
@@ -116,19 +132,7 @@ class MemoryStorage implements GenericStorage
 		foreach ($this->storage as $k => [$arr]) {
 			$values[$k] = $arr;
 		}
-		if ($orderDef) {
-			$orderComparator = new MemoryOrderDefComparator($orderDef, $this->navigator, $this->comparator);
-			uasort($values, function ($arr1, $arr2) use ($orderComparator) {
-				return $orderComparator->compare($arr1, $arr2);
-			});
-		}
-		if ($limit) {
-			$values = \array_slice($values, 0, $limit, true);
-		}
-		foreach ($values as $k => $arr) {
-			[, $rev] = $this->storage[$k];
-			yield $k => $this->deserialize($arr, $rev);
-		}
+		yield from $this->iterateValues($values, $orderDef, $limit);
 	}
 
 	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : \traversable
@@ -140,6 +144,11 @@ class MemoryStorage implements GenericStorage
 				$values[$k] = $arr;
 			}
 		}
+		yield from $this->iterateValues($values, $orderDef, $limit);
+	}
+
+	private function iterateValues(array $values, array $orderDef, int $limit) : \Generator
+	{
 		if ($orderDef) {
 			$orderComparator = new MemoryOrderDefComparator($orderDef, $this->navigator, $this->comparator);
 			uasort($values, function ($arr1, $arr2) use ($orderComparator) {
@@ -150,14 +159,18 @@ class MemoryStorage implements GenericStorage
 			$values = \array_slice($values, 0, $limit, true);
 		}
 		foreach ($values as $k => $arr) {
-			[, $rev] = $this->storage[$k];
-			yield $k => $this->deserialize($arr, $rev);
+			[, $rev, $seq_id] = $this->storage[$k];
+			yield $k => $this->deserialize($arr, $rev, $seq_id);
 		}
 	}
 
-	private function deserialize(array $arr, int $rev){
-		if($this->revisionPropertyPath !== null){
+	private function deserialize(array $arr, int $rev, int $seq_id)
+	{
+		if ($this->revisionPropertyPath !== null) {
 			ArrayPathNavigator::setPropertyValue($arr, $this->revisionPropertyPath, $rev);
+		}
+		if ($this->seqIdPropertyPath !== null) {
+			ArrayPathNavigator::setPropertyValue($arr, $this->seqIdPropertyPath, $seq_id);
 		}
 		$cls = $this->className;
 		/** @noinspection PhpUndefinedMethodInspection */

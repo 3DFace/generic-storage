@@ -33,7 +33,9 @@ class MyStorage implements GenericStorage
 	private $idPropertyName;
 	/** @var int */
 	private $idLength;
-	/** @var string */
+	/** @var string[] */
+	private $seqIdPropertyPath;
+	/** @var string[] */
 	private $revisionPropertyPath;
 	/** @var string[] */
 	private $add_generated_columns;
@@ -74,6 +76,7 @@ class MyStorage implements GenericStorage
 	 * @param string|null $idPropertyName
 	 * @param int $idLength
 	 * @param string|null $revisionPropertyName
+	 * @param string|null $seqIdPropertyName
 	 * @param array $add_generated_columns
 	 * @param array $add_columns
 	 * @param array $add_indexes
@@ -92,6 +95,7 @@ class MyStorage implements GenericStorage
 		string $idPropertyName = null,
 		int $idLength = 16,
 		string $revisionPropertyName = null,
+		string $seqIdPropertyName = null,
 		array $add_generated_columns = [],
 		array $add_columns = [],
 		array $add_indexes = [],
@@ -112,6 +116,9 @@ class MyStorage implements GenericStorage
 		$this->idLength = $idLength;
 		if ($revisionPropertyName !== null) {
 			$this->revisionPropertyPath = explode('/', $revisionPropertyName);
+		}
+		if ($seqIdPropertyName !== null) {
+			$this->seqIdPropertyPath = explode('/', $seqIdPropertyName);
 		}
 		$this->add_generated_columns = $add_generated_columns;
 		$this->add_columns = $add_columns;
@@ -151,7 +158,7 @@ class MyStorage implements GenericStorage
 		return $this->linkProvider->withLink(function (MyLink $link) use ($id) {
 			$e_id = $link->escapeString($id);
 			/** @noinspection SqlResolve */
-			$res = $link->query("SELECT `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
+			$res = $link->query("SELECT `\$seq_id`, `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
 			/** @noinspection LoopWhichDoesNotLoopInspection */
 			$rec = $res->fetchAssoc();
 			return $rec ? $this->deserialize($rec) : null;
@@ -199,6 +206,9 @@ class MyStorage implements GenericStorage
 			$arr = $item->jsonSerialize();
 			if ($this->revisionPropertyPath !== null) {
 				ArrayPathNavigator::unsetProperty($arr, $this->revisionPropertyPath);
+			}
+			if ($this->seqIdPropertyPath !== null) {
+				ArrayPathNavigator::unsetProperty($arr, $this->seqIdPropertyPath);
 			}
 			$add_column_set_node = $this->createUpdateColumnsFragment($link, $arr);
 			$add_column_set_node = $add_column_set_node ? (', '.$add_column_set_node) : '';
@@ -463,6 +473,9 @@ class MyStorage implements GenericStorage
 		$arr = \json_decode($rec['$data'], true);
 		if ($this->revisionPropertyPath !== null) {
 			ArrayPathNavigator::setPropertyValue($arr, $this->revisionPropertyPath, $rec['$revision']);
+		}
+		if ($this->seqIdPropertyPath !== null) {
+			ArrayPathNavigator::setPropertyValue($arr, $this->seqIdPropertyPath, $rec['$seq_id']);
 		}
 		return \call_user_func([$this->className, 'deserialize'], $arr);
 	}

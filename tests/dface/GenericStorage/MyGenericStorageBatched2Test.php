@@ -11,8 +11,10 @@ class MyGenericStorageBatched2Test extends GenericStorageTest
 	protected function setUp()
 	{
 		$linkProvider = LinkProviderFactory::createLinkProvider();
+		$this->seq_id_injected = true;
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
 			->setIdPropertyName('id')
+			->setSeqIdPropertyName('seq_id')
 			->setRevisionPropertyName('revision')
 			->addColumns([
 				'email' => 'VARCHAR(128)',
