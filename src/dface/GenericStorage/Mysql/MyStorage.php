@@ -35,6 +35,8 @@ class MyStorage implements GenericStorage
 	private $idLength;
 	/** @var string[] */
 	private $seqIdPropertyPath;
+	/** @var string */
+	private $seqIdPropertyName;
 	/** @var string[] */
 	private $revisionPropertyPath;
 	/** @var string[] */
@@ -117,6 +119,7 @@ class MyStorage implements GenericStorage
 		if ($revisionPropertyName !== null) {
 			$this->revisionPropertyPath = explode('/', $revisionPropertyName);
 		}
+		$this->seqIdPropertyName = $seqIdPropertyName;
 		if ($seqIdPropertyName !== null) {
 			$this->seqIdPropertyPath = explode('/', $seqIdPropertyName);
 		}
@@ -423,7 +426,14 @@ class MyStorage implements GenericStorage
 	private function makeWhere(MyLink $link, Criteria $criteria) : string
 	{
 		[$sql, $args] = $this->criteriaBuilder->build($criteria, function ($property) {
-			return $property === $this->idPropertyName ? ['HEX({i})', ['$id']] : ['{i}', [$property]];
+			switch ($property){
+				case $this->idPropertyName:
+					return ['HEX({i})', ['$id']];
+				case $this->seqIdPropertyName:
+					return ['{i}', ['$seq_id']];
+				default:
+					return ['{i}', [$property]];
+			}
 		});
 		$node = $this->parser->parse($sql);
 		return $this->formatter->format($node, $args, [$link, 'escapeString']);

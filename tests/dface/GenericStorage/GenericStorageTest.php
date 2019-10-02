@@ -4,6 +4,7 @@
 namespace dface\GenericStorage;
 
 use dface\criteria\Equals;
+use dface\criteria\IntegerConstant;
 use dface\criteria\NotEquals;
 use dface\criteria\Reference;
 use dface\criteria\StringConstant;
@@ -229,6 +230,14 @@ abstract class GenericStorageTest extends TestCase {
 		$criteria = new Equals(new Reference('email'), new StringConstant('no@test.php'));
 		$loaded_arr = iterator_to_array($s->listByCriteria($criteria));
 		$this->assertEquals([], $loaded_arr);
+
+		if($this->seq_id_injected){
+			$criteria = new Equals(new Reference('seq_id'), new IntegerConstant(1));
+			$loaded_arr = iterator_to_array($s->listByCriteria($criteria));
+			$this->assertEquals([
+				(string)$uid1 => $expected1,
+			], $loaded_arr);
+		}
 	}
 
 	/**
