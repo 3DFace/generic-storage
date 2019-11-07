@@ -14,7 +14,7 @@ class MyStorageBuilder {
 	/** @var string */
 	private $idPropertyName;
 	/** @var string */
-	private $idLength = 16;
+	private $idColumnDef = 'BINARY(16)';
 	/** @var string */
 	private $revisionPropertyName;
 	/** @var string */
@@ -51,8 +51,8 @@ class MyStorageBuilder {
 		return $this;
 	}
 
-	public function setIdLength(int $idLength) : MyStorageBuilder {
-		$this->idLength = $idLength;
+	public function setIdColumnDef(string $idColumnDef) : MyStorageBuilder {
+		$this->idColumnDef = $idColumnDef;
 		return $this;
 	}
 
@@ -126,7 +126,7 @@ class MyStorageBuilder {
 			$this->linkProvider,
 			$this->tableName,
 			$this->idPropertyName,
-			$this->idLength,
+			$this->idColumnDef,
 			$this->revisionPropertyName,
 			$this->seqIdPropertyName,
 			$this->add_generated_columns,

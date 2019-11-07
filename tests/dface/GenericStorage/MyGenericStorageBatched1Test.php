@@ -7,7 +7,7 @@ use dface\GenericStorage\Mysql\MyStorageBuilder;
 
 class MyGenericStorageBatched1Test extends GenericStorageTest
 {
-	protected function getIdLength() : int
+	protected function getIdColumnLength() : int
 	{
 		return 32;
 	}
@@ -17,7 +17,7 @@ class MyGenericStorageBatched1Test extends GenericStorageTest
 		$linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
 			->setIdPropertyName('id')
-			->setIdLength(32)
+			->setIdColumnDef('BINARY(32)')
 			->setRevisionPropertyName('revision')
 			->addColumns([
 				'email' => 'VARCHAR(128)',

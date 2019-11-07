@@ -21,7 +21,7 @@ abstract class GenericStorageTest extends TestCase {
 	/** @var bool */
 	protected $seq_id_injected = false;
 
-	protected function getIdLength() : int {
+	protected function getIdColumnLength() : int {
 		return 16;
 	}
 
@@ -30,7 +30,7 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testWrongTypeDoNotPass() : void {
 		$s = $this->storage;
-		$uid = TestId::generate($this->getIdLength());
+		$uid = TestId::generate($this->getIdColumnLength());
 		$this->expectException(InvalidDataType::class);
 		$s->saveItem($uid, new class() implements \JsonSerializable {
 			public function jsonSerialize() {
@@ -44,7 +44,7 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testCorrectlySaved() : void {
 		$s = $this->storage;
-		$uid = TestId::generate($this->getIdLength());
+		$uid = TestId::generate($this->getIdColumnLength());
 		$entity = new TestEntity($uid, 'Test User', 'user@test.php', new TestData('asd', 10), 1);
 		$s->saveItem($uid, $entity);
 		$loaded = $s->getItem($uid);
@@ -60,7 +60,7 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testRemoved() : void {
 		$s = $this->storage;
-		$uid = TestId::generate($this->getIdLength());
+		$uid = TestId::generate($this->getIdColumnLength());
 		$entity = new TestEntity($uid, 'Test User', 'user@test.php', null, 1);
 		$s->saveItem($uid, $entity);
 		$loaded = $s->getItem($uid);
@@ -79,8 +79,8 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testRemovedByCriteria() : void {
 		$s = $this->storage;
-		$uid1 = TestId::generate($this->getIdLength());
-		$uid2 = TestId::generate($this->getIdLength());
+		$uid1 = TestId::generate($this->getIdColumnLength());
+		$uid2 = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user1@test.php', null, 1);
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'user2@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
@@ -103,8 +103,8 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testCleared() : void {
 		$s = $this->storage;
-		$uid1 = TestId::generate($this->getIdLength());
-		$uid2 = TestId::generate($this->getIdLength());
+		$uid1 = TestId::generate($this->getIdColumnLength());
+		$uid2 = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user1@test.php', null, 1);
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'user2@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
@@ -121,7 +121,7 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testOverwrite() : void {
 		$s = $this->storage;
-		$uid = TestId::generate($this->getIdLength());
+		$uid = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
 		$entity2 = new TestEntity($uid, 'Test User 2', 'user@test.php', new TestData('asd', 10), 1);
 		$s->saveItem($uid, $entity1);
@@ -139,7 +139,7 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testOverwriteRevisionGrows() : void {
 		$s = $this->storage;
-		$uid = TestId::generate($this->getIdLength());
+		$uid = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
 
 		$s->saveItem($uid, $entity1);
@@ -158,7 +158,7 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testRemoveResetRevision() : void {
 		$s = $this->storage;
-		$uid = TestId::generate($this->getIdLength());
+		$uid = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
 		$s->saveItem($uid, $entity1);
 		$s->saveItem($uid, $entity1);
@@ -177,7 +177,7 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testExpectedNew() : void {
 		$s = $this->storage;
-		$uid = TestId::generate($this->getIdLength());
+		$uid = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
 
 		$s->saveItem($uid, $entity1, 0);
@@ -190,7 +190,7 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testExpected1() : void {
 		$s = $this->storage;
-		$uid = TestId::generate($this->getIdLength());
+		$uid = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
 
 		$s->saveItem($uid, $entity1);
@@ -204,8 +204,8 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testIndexWorks() : void {
 		$s = $this->storage;
-		$uid1 = TestId::generate($this->getIdLength());
-		$uid2 = TestId::generate($this->getIdLength());
+		$uid1 = TestId::generate($this->getIdColumnLength());
+		$uid2 = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php', null, 1);
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
@@ -245,7 +245,7 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testIdIndexWorks() : void {
 		$s = $this->storage;
-		$uid1 = TestId::generate($this->getIdLength());
+		$uid1 = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 
@@ -270,9 +270,9 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testMultiGetWorks() : void {
 		$s = $this->storage;
-		$uid1 = TestId::generate($this->getIdLength());
-		$uid2 = TestId::generate($this->getIdLength());
-		$uid3 = TestId::generate($this->getIdLength());
+		$uid1 = TestId::generate($this->getIdColumnLength());
+		$uid2 = TestId::generate($this->getIdColumnLength());
+		$uid3 = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php', null, 1);
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php', null, 1);
 		$entity3 = new TestEntity($uid3, 'Test User 3', 'user@test.php', null, 1);
@@ -301,8 +301,8 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testListAllWorks() : void {
 		$s = $this->storage;
-		$uid1 = TestId::generate($this->getIdLength());
-		$uid2 = TestId::generate($this->getIdLength());
+		$uid1 = TestId::generate($this->getIdColumnLength());
+		$uid2 = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php', null, 1);
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'user@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
@@ -329,9 +329,9 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testListAllOrderedWorks() : void {
 		$s = $this->storage;
-		$uid1 = TestId::generate($this->getIdLength());
-		$uid2 = TestId::generate($this->getIdLength());
-		$uid3 = TestId::generate($this->getIdLength());
+		$uid1 = TestId::generate($this->getIdColumnLength());
+		$uid2 = TestId::generate($this->getIdColumnLength());
+		$uid3 = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
 		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
@@ -368,9 +368,9 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testListAllOrderedWithLimitWorks() : void {
 		$s = $this->storage;
-		$uid1 = TestId::generate($this->getIdLength());
-		$uid2 = TestId::generate($this->getIdLength());
-		$uid3 = TestId::generate($this->getIdLength());
+		$uid1 = TestId::generate($this->getIdColumnLength());
+		$uid2 = TestId::generate($this->getIdColumnLength());
+		$uid3 = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
 		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
@@ -405,9 +405,9 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testListAllUnorderedWithLimitWorks() : void {
 		$s = $this->storage;
-		$uid1 = TestId::generate($this->getIdLength());
-		$uid2 = TestId::generate($this->getIdLength());
-		$uid3 = TestId::generate($this->getIdLength());
+		$uid1 = TestId::generate($this->getIdColumnLength());
+		$uid2 = TestId::generate($this->getIdColumnLength());
+		$uid3 = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
 		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
@@ -437,9 +437,9 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testListFilteredAndOrderedWorks() : void {
 		$s = $this->storage;
-		$uid1 = TestId::generate($this->getIdLength());
-		$uid2 = TestId::generate($this->getIdLength());
-		$uid3 = TestId::generate($this->getIdLength());
+		$uid1 = TestId::generate($this->getIdColumnLength());
+		$uid2 = TestId::generate($this->getIdColumnLength());
+		$uid3 = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
 		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
@@ -474,9 +474,9 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testListFilteredAndOrderedWithLimitWorks() : void {
 		$s = $this->storage;
-		$uid1 = TestId::generate($this->getIdLength());
-		$uid2 = TestId::generate($this->getIdLength());
-		$uid3 = TestId::generate($this->getIdLength());
+		$uid1 = TestId::generate($this->getIdColumnLength());
+		$uid2 = TestId::generate($this->getIdColumnLength());
+		$uid3 = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
 		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
@@ -509,7 +509,7 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testListAllOrderByIdWorks() : void {
 		$s = $this->storage;
-		$pad = \str_repeat('0', $this->getIdLength() * 2 - 1);
+		$pad = \str_repeat('0', $this->getIdColumnLength() * 2 - 1);
 		$uid1 = new TestId(hex2bin($pad.'1'));
 		$uid2 = new TestId(hex2bin($pad.'2'));
 		$uid3 = new TestId(hex2bin($pad.'3'));
@@ -549,7 +549,7 @@ abstract class GenericStorageTest extends TestCase {
 	 */
 	public function testListAllOrderByIdWithLimitWorks() : void {
 		$s = $this->storage;
-		$pad = \str_repeat('0', $this->getIdLength() * 2 - 1);
+		$pad = \str_repeat('0', $this->getIdColumnLength() * 2 - 1);
 		$uid1 = new TestId(hex2bin($pad.'1'));
 		$uid2 = new TestId(hex2bin($pad.'2'));
 		$uid3 = new TestId(hex2bin($pad.'3'));

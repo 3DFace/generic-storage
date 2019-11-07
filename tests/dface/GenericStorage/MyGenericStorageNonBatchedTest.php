@@ -72,7 +72,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		iterator_to_array($this->storage->getItems([TestId::generate($this->getIdLength())]));
+		iterator_to_array($this->storage->getItems([TestId::generate($this->getIdColumnLength())]));
 	}
 
 	/**
@@ -83,7 +83,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		$this->storage->getItem(TestId::generate($this->getIdLength()));
+		$this->storage->getItem(TestId::generate($this->getIdColumnLength()));
 	}
 
 	/**
@@ -94,7 +94,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		$this->storage->saveItem($id = TestId::generate($this->getIdLength()), new TestEntity($id, 'name', 'none', null, 1));
+		$this->storage->saveItem($id = TestId::generate($this->getIdColumnLength()), new TestEntity($id, 'name', 'none', null, 1));
 	}
 
 	/**
@@ -105,7 +105,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		$this->storage->removeItem(TestId::generate($this->getIdLength()));
+		$this->storage->removeItem(TestId::generate($this->getIdColumnLength()));
 	}
 
 }

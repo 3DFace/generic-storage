@@ -32,7 +32,9 @@ class MyStorage implements GenericStorage
 	/** @var string */
 	private $idPropertyName;
 	/** @var int */
-	private $idLength;
+	private $idColumnDef;
+	/** @var bool */
+	private $idBin;
 	/** @var string[] */
 	private $seqIdPropertyPath;
 	/** @var string */
@@ -76,7 +78,7 @@ class MyStorage implements GenericStorage
 	 * @param MyLinkProvider $link_provider
 	 * @param string $tableName
 	 * @param string|null $idPropertyName
-	 * @param int $idLength
+	 * @param string $idColumnDef
 	 * @param string|null $revisionPropertyName
 	 * @param string|null $seqIdPropertyName
 	 * @param array $add_generated_columns
@@ -95,7 +97,7 @@ class MyStorage implements GenericStorage
 		MyLinkProvider $link_provider,
 		string $tableName,
 		string $idPropertyName = null,
-		int $idLength = 16,
+		string $idColumnDef = 'BINARY(16)',
 		string $revisionPropertyName = null,
 		string $seqIdPropertyName = null,
 		array $add_generated_columns = [],
@@ -115,7 +117,8 @@ class MyStorage implements GenericStorage
 		$this->className = $className;
 		$this->tableNameEscaped = str_replace('`', '``', $tableName);
 		$this->idPropertyName = $idPropertyName;
-		$this->idLength = $idLength;
+		$this->idColumnDef = $idColumnDef;
+		$this->idBin = \stripos($idColumnDef, 'binary') !== false;
 		if ($revisionPropertyName !== null) {
 			$this->revisionPropertyPath = explode('/', $revisionPropertyName);
 		}
@@ -137,8 +140,12 @@ class MyStorage implements GenericStorage
 		$this->temporary = $temporary;
 		$this->has_unique_secondary = $has_unique_secondary;
 		$this->criteriaBuilder = new SqlCriteriaBuilder();
+		$idSelector = '`$id`';
+		if($this->idBin){
+			$idSelector = "LOWER(HEX($idSelector))";
+		}
 		/** @noinspection SqlResolve */
-		$this->selectAllFromTable = "SELECT `\$seq_id`, LOWER(HEX(`\$id`)) as `\$id`, `\$data`, `\$revision` FROM `$this->tableNameEscaped`";
+		$this->selectAllFromTable = "SELECT `\$seq_id`, $idSelector as `\$id`, `\$data`, `\$revision` FROM `$this->tableNameEscaped`";
 		if ($batch_list_size < 0) {
 			throw new \InvalidArgumentException("Batch list size must be >=0, $batch_list_size given");
 		}
@@ -159,9 +166,12 @@ class MyStorage implements GenericStorage
 	public function getItem($id) : ?\JsonSerializable
 	{
 		return $this->linkProvider->withLink(function (MyLink $link) use ($id) {
-			$e_id = $link->escapeString($id);
+			$e_id_quoted = '\''.$link->escapeString($id).'\'';
+			if($this->idBin){
+				$e_id_quoted = "UNHEX($e_id_quoted)";
+			}
 			/** @noinspection SqlResolve */
-			$res = $link->query("SELECT `\$seq_id`, `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
+			$res = $link->query("SELECT `\$seq_id`, `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=$e_id_quoted");
 			/** @noinspection LoopWhichDoesNotLoopInspection */
 			$rec = $res->fetchAssoc();
 			return $rec ? $this->deserialize($rec) : null;
@@ -183,8 +193,11 @@ class MyStorage implements GenericStorage
 					yield from $this->iterateOverDecoded($link, $node, [], 0);
 					$sub_list = [];
 				}
-				$e_id = $link->escapeString($id);
-				$sub_list[] = "UNHEX('$e_id')";
+				$e_id_quoted = '\''.$link->escapeString($id).'\'';
+				if($this->idBin){
+					$e_id_quoted = "UNHEX($e_id_quoted)";
+				}
+				$sub_list[] = $e_id_quoted;
 			}
 			if ($sub_list) {
 				$where = ' WHERE `$id` IN ('.implode(',', $sub_list).')';
@@ -278,9 +291,12 @@ class MyStorage implements GenericStorage
 	public function removeItem($id) : void
 	{
 		$this->linkProvider->withLink(function (MyLink $link) use ($id) {
-			$e_id = $link->escapeString($id);
+			$e_id_quoted = '\''.$link->escapeString($id).'\'';
+			if($this->idBin){
+				$e_id_quoted = "UNHEX($e_id_quoted)";
+			}
 			/** @noinspection SqlResolve */
-			$link->query("DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
+			$link->query("DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=$e_id_quoted");
 		});
 	}
 
@@ -312,10 +328,13 @@ class MyStorage implements GenericStorage
 	 */
 	private function insert(MyLink $link, string $id, string $data, string $add_column_set_node) : void
 	{
-		$e_id = $link->escapeString($id);
+		$e_id_quoted = '\''.$link->escapeString($id).'\'';
+		if($this->idBin){
+			$e_id_quoted = "UNHEX($e_id_quoted)";
+		}
 		$e_data = $link->escapeString($data);
 		/** @noinspection SqlResolve */
-		$link->query("INSERT INTO `$this->tableNameEscaped` SET `\$id`=UNHEX('$e_id'), `\$data`='$e_data' $add_column_set_node");
+		$link->query("INSERT INTO `$this->tableNameEscaped` SET `\$id`=$e_id_quoted, `\$data`='$e_data' $add_column_set_node");
 	}
 
 	/**
@@ -333,11 +352,14 @@ class MyStorage implements GenericStorage
 		string $add_column_set_node,
 		?int $expected_rev
 	) : void {
-		$e_id = $link->escapeString($id);
+		$e_id_quoted = '\''.$link->escapeString($id).'\'';
+		if($this->idBin){
+			$e_id_quoted = "UNHEX($e_id_quoted)";
+		}
 		$e_data = $link->escapeString($data);
 		/** @noinspection SqlResolve */
 		$update = "UPDATE `$this->tableNameEscaped` SET `\$data`='$e_data', `\$revision`=`\$revision`+1 ".
-			"$add_column_set_node WHERE `\$id`=UNHEX('$e_id')";
+			"$add_column_set_node WHERE `\$id`=$e_id_quoted";
 		if ($expected_rev === null) {
 			$link->query($update);
 		}else {
@@ -346,7 +368,7 @@ class MyStorage implements GenericStorage
 			$affected = $link->getAffectedRows();
 			if ($affected === 0) {
 				/** @noinspection SqlResolve */
-				$res = $link->query("SELECT `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
+				$res = $link->query("SELECT `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=$e_id_quoted");
 				$rec = $res->fetchRow();
 				$rev = $rec[0] ?? null;
 				throw new UnexpectedRevision("Item '$id' expected revision $expected_rev does not match actual $rev");
@@ -363,10 +385,13 @@ class MyStorage implements GenericStorage
 	 */
 	private function insertOnDupUpdate(MyLink $link, string $id, ?string $data, string $add_column_set_str) : void
 	{
-		$e_id = $link->escapeString($id);
+		$e_id_quoted = '\''.$link->escapeString($id).'\'';
+		if($this->idBin){
+			$e_id_quoted = "UNHEX($e_id_quoted)";
+		}
 		$e_data = $link->escapeString($data);
 		/** @noinspection SqlResolve */
-		$q1 = "INSERT INTO `$this->tableNameEscaped` SET `\$id`=UNHEX('$e_id'), `\$data`='$e_data' $add_column_set_str \n".
+		$q1 = "INSERT INTO `$this->tableNameEscaped` SET `\$id`=$e_id_quoted, `\$data`='$e_data' $add_column_set_str \n".
 			"ON DUPLICATE KEY UPDATE `\$data`='$e_data', `\$revision`=`\$revision`+1 $add_column_set_str";
 		$link->query($q1);
 	}
@@ -428,7 +453,10 @@ class MyStorage implements GenericStorage
 		[$sql, $args] = $this->criteriaBuilder->build($criteria, function ($property) {
 			switch ($property){
 				case $this->idPropertyName:
-					return ['HEX({i})', ['$id']];
+					if($this->idBin) {
+						return ['HEX({i})', ['$id']];
+					}
+					return ['{i}', ['$id']];
 				case $this->seqIdPropertyName:
 					return ['{i}', ['$seq_id']];
 				default:
@@ -691,7 +719,7 @@ class MyStorage implements GenericStorage
 			$tmp = $this->temporary ? 'TEMPORARY' : '';
 			$link->query("CREATE $tmp TABLE `$this->tableNameEscaped` (
 				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-				`\$id` BINARY({$this->idLength}) NOT NULL,
+				`\$id` {$this->idColumnDef} NOT NULL,
 				`\$data` {$this->dataColumnDef},
 				`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 				`\$revision` INT NOT NULL DEFAULT 1,
