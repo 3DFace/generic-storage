@@ -4,7 +4,6 @@
 namespace dface\GenericStorage\Memory;
 
 use dface\GenericStorage\Generic\GenericManyToMany;
-use dface\GenericStorage\Generic\UnderlyingStorageError;
 
 class MemoryManyToMany implements GenericManyToMany {
 

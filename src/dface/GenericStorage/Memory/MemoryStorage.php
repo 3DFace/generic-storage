@@ -63,10 +63,10 @@ class MemoryStorage implements GenericStorage
 	}
 
 	/**
-	 * @param array|\traversable $ids
-	 * @return \JsonSerializable[]|\traversable
+	 * @param iterable $ids
+	 * @return \JsonSerializable[]|iterable
 	 */
-	public function getItems($ids) : \traversable
+	public function getItems(iterable $ids) : iterable
 	{
 		foreach ($ids as $id) {
 			$k = (string)$id;
@@ -126,7 +126,7 @@ class MemoryStorage implements GenericStorage
 		$this->storage = [];
 	}
 
-	public function listAll(array $orderDef = [], int $limit = 0) : \traversable
+	public function listAll(array $orderDef = [], int $limit = 0) : iterable
 	{
 		$values = [];
 		foreach ($this->storage as $k => [$arr]) {
@@ -135,7 +135,7 @@ class MemoryStorage implements GenericStorage
 		yield from $this->iterateValues($values, $orderDef, $limit);
 	}
 
-	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : \traversable
+	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : iterable
 	{
 		$fn = $this->criteriaBuilder->build($criteria);
 		$values = [];

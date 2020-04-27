@@ -11,7 +11,7 @@ use dface\GenericStorage\Mysql\MyStorageBuilder;
 class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest
 {
 
-	protected function setUp()
+	protected function setUp() : void
 	{
 		$linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
@@ -92,7 +92,7 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest
 		$s->saveItem($uid1, $entity1);
 		$s->saveItem($uid2, $entity2);
 		$s->updateColumns();
-		$loaded = iterator_to_array($s->listAll(), false);
+		$loaded = self::iterable_to_array($s->listAll(), false);
 		$this->assertEquals([$entity1, $entity2], $loaded);
 	}
 

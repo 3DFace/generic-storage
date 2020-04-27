@@ -15,7 +15,6 @@ class LinkProviderFactory
 	{
 		static $link;
 		if ($link === null) {
-			/** @noinspection UntrustedInclusionInspection */
 			include_once __DIR__.'/../../../options.php';
 			$link = \mysqli_connect(DB_HOST, DB_USER, DB_PASS, DB_BASE);
 			if (!$link) {

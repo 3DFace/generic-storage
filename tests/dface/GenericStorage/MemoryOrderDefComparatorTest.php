@@ -8,14 +8,16 @@ use dface\criteria\SimpleComparator;
 use dface\GenericStorage\Memory\MemoryOrderDefComparator;
 use PHPUnit\Framework\TestCase;
 
-class MemoryOrderDefComparatorTest extends TestCase {
+class MemoryOrderDefComparatorTest extends TestCase
+{
 
 	/** @var SimpleComparator */
 	private $comparator;
 	/** @var ArrayGraphNavigator */
 	private $navigator;
 
-	public function setUp(){
+	public function setUp() : void
+	{
 		$this->comparator = new SimpleComparator();
 		$this->navigator = new ArrayGraphNavigator();
 	}

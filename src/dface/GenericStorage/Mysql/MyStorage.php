@@ -20,8 +20,7 @@ use dface\sql\placeholders\FormatterException;
 use dface\sql\placeholders\Parser;
 use dface\sql\placeholders\ParserException;
 
-class MyStorage implements GenericStorage
-{
+class MyStorage implements GenericStorage{
 
 	/** @var string */
 	private $className;
@@ -141,10 +140,9 @@ class MyStorage implements GenericStorage
 		$this->has_unique_secondary = $has_unique_secondary;
 		$this->criteriaBuilder = new SqlCriteriaBuilder();
 		$idSelector = '`$id`';
-		if($this->idBin){
+		if ($this->idBin) {
 			$idSelector = "LOWER(HEX($idSelector))";
 		}
-		/** @noinspection SqlResolve */
 		$this->selectAllFromTable = "SELECT `\$seq_id`, $idSelector as `\$id`, `\$data`, `\$revision` FROM `$this->tableNameEscaped`";
 		if ($batch_list_size < 0) {
 			throw new \InvalidArgumentException("Batch list size must be >=0, $batch_list_size given");
@@ -167,22 +165,21 @@ class MyStorage implements GenericStorage
 	{
 		return $this->linkProvider->withLink(function (MyLink $link) use ($id) {
 			$e_id_quoted = '\''.$link->escapeString($id).'\'';
-			if($this->idBin){
+			if ($this->idBin) {
 				$e_id_quoted = "UNHEX($e_id_quoted)";
 			}
 			/** @noinspection SqlResolve */
 			$res = $link->query("SELECT `\$seq_id`, `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=$e_id_quoted");
-			/** @noinspection LoopWhichDoesNotLoopInspection */
 			$rec = $res->fetchAssoc();
 			return $rec ? $this->deserialize($rec) : null;
 		});
 	}
 
 	/**
-	 * @param array|\traversable $ids
-	 * @return \traversable
+	 * @param iterable $ids
+	 * @return iterable
 	 */
-	public function getItems($ids) : \traversable
+	public function getItems(iterable $ids) : iterable
 	{
 		return $this->linkProvider->withLink(function (MyLink $link) use ($ids) {
 			$sub_list = [];
@@ -194,7 +191,7 @@ class MyStorage implements GenericStorage
 					$sub_list = [];
 				}
 				$e_id_quoted = '\''.$link->escapeString($id).'\'';
-				if($this->idBin){
+				if ($this->idBin) {
 					$e_id_quoted = "UNHEX($e_id_quoted)";
 				}
 				$sub_list[] = $e_id_quoted;
@@ -292,7 +289,7 @@ class MyStorage implements GenericStorage
 	{
 		$this->linkProvider->withLink(function (MyLink $link) use ($id) {
 			$e_id_quoted = '\''.$link->escapeString($id).'\'';
-			if($this->idBin){
+			if ($this->idBin) {
 				$e_id_quoted = "UNHEX($e_id_quoted)";
 			}
 			/** @noinspection SqlResolve */
@@ -329,7 +326,7 @@ class MyStorage implements GenericStorage
 	private function insert(MyLink $link, string $id, string $data, string $add_column_set_node) : void
 	{
 		$e_id_quoted = '\''.$link->escapeString($id).'\'';
-		if($this->idBin){
+		if ($this->idBin) {
 			$e_id_quoted = "UNHEX($e_id_quoted)";
 		}
 		$e_data = $link->escapeString($data);
@@ -353,7 +350,7 @@ class MyStorage implements GenericStorage
 		?int $expected_rev
 	) : void {
 		$e_id_quoted = '\''.$link->escapeString($id).'\'';
-		if($this->idBin){
+		if ($this->idBin) {
 			$e_id_quoted = "UNHEX($e_id_quoted)";
 		}
 		$e_data = $link->escapeString($data);
@@ -386,7 +383,7 @@ class MyStorage implements GenericStorage
 	private function insertOnDupUpdate(MyLink $link, string $id, ?string $data, string $add_column_set_str) : void
 	{
 		$e_id_quoted = '\''.$link->escapeString($id).'\'';
-		if($this->idBin){
+		if ($this->idBin) {
 			$e_id_quoted = "UNHEX($e_id_quoted)";
 		}
 		$e_data = $link->escapeString($data);
@@ -417,9 +414,9 @@ class MyStorage implements GenericStorage
 	/**
 	 * @param array $orderDef
 	 * @param int $limit
-	 * @return \traversable
+	 * @return iterable
 	 */
-	public function listAll(array $orderDef = [], int $limit = 0) : \traversable
+	public function listAll(array $orderDef = [], int $limit = 0) : iterable
 	{
 		return $this->linkProvider->withLink(function (MyLink $link) use ($orderDef, $limit) {
 			$all = "$this->selectAllFromTable WHERE 1";
@@ -431,9 +428,9 @@ class MyStorage implements GenericStorage
 	 * @param Criteria $criteria
 	 * @param array $orderDef
 	 * @param int $limit
-	 * @return \traversable
+	 * @return iterable
 	 */
-	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : \traversable
+	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : iterable
 	{
 		return $this->linkProvider->withLink(function (MyLink $link) use ($criteria, $orderDef, $limit) {
 			$q = "$this->selectAllFromTable WHERE ".$this->makeWhere($link, $criteria);
@@ -451,16 +448,20 @@ class MyStorage implements GenericStorage
 	private function makeWhere(MyLink $link, Criteria $criteria) : string
 	{
 		[$sql, $args] = $this->criteriaBuilder->build($criteria, function ($property) {
-			switch ($property){
-				case $this->idPropertyName:
-					if($this->idBin) {
+			switch (true) {
+				case $this->idPropertyName === $property && !isset($this->add_columns[$property]):
+					if ($this->idBin) {
 						return ['HEX({i})', ['$id']];
 					}
 					return ['{i}', ['$id']];
-				case $this->seqIdPropertyName:
+				case $this->seqIdPropertyName === $property:
 					return ['{i}', ['$seq_id']];
 				default:
-					return ['{i}', [$property]];
+					if (isset($this->add_columns[$property]) || isset($this->add_generated_columns[$property])) {
+						return ['{i}', [$property]];
+					}
+					$dot_ref = '$.'.\str_replace('/', '.', $property);
+					return ['JSON_UNQUOTE(JSON_EXTRACT({i}, {s}))', ['$data', $dot_ref]];
 			}
 		});
 		$node = $this->parser->parse($sql);
@@ -469,15 +470,15 @@ class MyStorage implements GenericStorage
 
 	public function updateColumns($full_deserialize = false) : void
 	{
-		$this->linkProvider->withLink(function (MyLink $link) use ($full_deserialize){
+		$this->linkProvider->withLink(function (MyLink $link) use ($full_deserialize) {
 			if ($this->add_columns) {
 				$it = $this->iterateOver($link, "$this->selectAllFromTable WHERE 1 ", [], 0);
 				foreach ($it as $rec) {
-					if($full_deserialize){
+					if ($full_deserialize) {
 						/** @var \JsonSerializable $obj */
 						$obj = $this->deserialize($rec);
 						$arr = $obj->jsonSerialize();
-					}else{
+					}else {
 						$arr = \json_decode($rec['$data'], true);
 					}
 					// TODO: don't update if columns contain correct values
@@ -554,7 +555,7 @@ class MyStorage implements GenericStorage
 				}else {
 					$nodes = [
 						$baseQuery,
-						$this->buildOrderBy($orderDef)
+						$this->buildOrderBy($link, $orderDef)
 					];
 					if ($limit) {
 						$nodes[] = " LIMIT $limit";
@@ -564,7 +565,7 @@ class MyStorage implements GenericStorage
 			}else {
 				$nodes = [
 					$baseQuery,
-					$this->buildOrderBy($orderDef),
+					$this->buildOrderBy($link, $orderDef),
 				];
 				if ($use_batches) {
 					yield from $this->iterateOverLinkBatchedByLimit($link, implode(' ', $nodes), $limit);
@@ -585,19 +586,32 @@ class MyStorage implements GenericStorage
 	}
 
 	/**
+	 * @param MyLink $link
 	 * @param array $orderDef
 	 * @return string
 	 */
-	private function buildOrderBy(array $orderDef) : string
+	private function buildOrderBy(MyLink $link, array $orderDef) : string
 	{
 		$members = [];
 		foreach ($orderDef as [$property, $asc]) {
-			if ($property === $this->idPropertyName) {
-				$property = '$id';
+			switch (true) {
+				case $this->idPropertyName === $property:
+					$e_col = '`$id`';
+					break;
+				case $this->seqIdPropertyName === $property:
+					$e_col = '`$seq_id`';
+					break;
+				default:
+					if (isset($this->add_columns[$property]) || isset($this->add_generated_columns[$property])) {
+						$e_col = '`'.str_replace('`', '``', $property).'`';
+					}else{
+						$dot_ref = '$.'.\str_replace('/', '.', $property);
+						$e_ref = $link->escapeString($dot_ref);
+						$e_col = "JSON_UNQUOTE(JSON_EXTRACT(`\$data`, '$e_ref'))";
+					}
 			}
-			$e_col = str_replace('`', '``', $property);
-			$e_dir = $asc ? '' : ' DESC';
-			$members[] = "`$e_col`$e_dir";
+			$e_dir = $asc ? '' : 'DESC';
+			$members[] = "$e_col $e_dir";
 		}
 		return ' ORDER BY '.implode(', ', $members);
 	}
@@ -712,8 +726,14 @@ class MyStorage implements GenericStorage
 				return "`$i` $type";
 			}, $this->add_columns, array_keys($this->add_columns));
 			$add_columns = $add_columns ? ','.implode("\n\t\t\t,", $add_columns) : '';
-			$add_generated_columns = $this->add_generated_columns ? ','.implode("\n\t\t\t,",
-					$this->add_generated_columns) : '';
+			$add_generated_columns = '';
+			if($this->add_generated_columns){
+				$add_gen_arr = [];
+				foreach ($this->add_generated_columns as $i=>$def){
+					$add_gen_arr[] = "`$i` $def";
+				}
+				$add_generated_columns = ','.implode("\n\t\t\t,", $add_gen_arr);
+			}
 			$add_indexes = $this->add_indexes ? ','.implode("\n\t\t\t,", $this->add_indexes) : '';
 			$link->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
 			$tmp = $this->temporary ? 'TEMPORARY' : '';

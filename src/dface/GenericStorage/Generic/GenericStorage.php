@@ -16,11 +16,11 @@ interface GenericStorage
 	public function getItem($id) : ?\JsonSerializable;
 
 	/**
-	 * @param array|\traversable $ids
-	 * @return \JsonSerializable[]|\traversable
+	 * @param iterable $ids
+	 * @return \JsonSerializable[]|iterable
 	 * @throws UnderlyingStorageError
 	 */
-	public function getItems($ids) : \traversable;
+	public function getItems(iterable $ids) : iterable;
 
 	/**
 	 * @param $id
@@ -50,18 +50,18 @@ interface GenericStorage
 	/**
 	 * @param array[] $orderDef - list of pairs [`property`(string), `direction`(bool)]
 	 * @param int $limit
-	 * @return \traversable
+	 * @return iterable
 	 * @throws UnderlyingStorageError
 	 */
-	public function listAll(array $orderDef = [], int $limit = 0) : \traversable;
+	public function listAll(array $orderDef = [], int $limit = 0) : iterable;
 
 	/**
 	 * @param array[] $orderDef - list of pairs [`property`(string), `direction`(bool)]
 	 * @param Criteria $criteria
 	 * @param int $limit
-	 * @return \traversable
+	 * @return iterable
 	 * @throws UnderlyingStorageError
 	 */
-	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : \traversable;
+	public function listByCriteria(Criteria $criteria, array $orderDef = [], int $limit = 0) : iterable;
 
 }

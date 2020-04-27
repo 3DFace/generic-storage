@@ -12,7 +12,7 @@ class MyGenericStorageNonBinaryIdTest extends GenericStorageTest
 		return 6;
 	}
 
-	protected function setUp()
+	protected function setUp() : void
 	{
 		$linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))

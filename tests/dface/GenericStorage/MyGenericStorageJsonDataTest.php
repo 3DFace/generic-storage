@@ -8,7 +8,7 @@ use dface\GenericStorage\Mysql\MyStorageBuilder;
 class MyGenericStorageJsonDataTest extends GenericStorageTest
 {
 
-	protected function setUp()
+	protected function setUp() : void
 	{
 		$linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
@@ -18,8 +18,8 @@ class MyGenericStorageJsonDataTest extends GenericStorageTest
 //				'email' => 'VARCHAR(128)',
 			])
 			->addGeneratedColumns([
-				'`email` VARCHAR(128) AS (JSON_UNQUOTE(JSON_EXTRACT(`$data`, \'$.email\'))) VIRTUAL',
-				'`data/a` VARCHAR(128) AS (JSON_UNQUOTE(JSON_EXTRACT(`$data`, \'$.data.a\'))) VIRTUAL',
+				'email' => 'VARCHAR(128) AS (JSON_UNQUOTE(JSON_EXTRACT(`$data`, \'$.email\'))) VIRTUAL',
+//				'data/a' => 'VARCHAR(128) AS (JSON_UNQUOTE(JSON_EXTRACT(`$data`, \'$.data.a\'))) VIRTUAL',
 			])
 			->addIndexes([
 				'INDEX email(email)',

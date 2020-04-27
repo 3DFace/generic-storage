@@ -4,7 +4,6 @@
 namespace dface\GenericStorage\Memory;
 
 use dface\GenericStorage\Generic\GenericSet;
-use dface\GenericStorage\Generic\UnderlyingStorageError;
 
 class MemorySet implements GenericSet {
 

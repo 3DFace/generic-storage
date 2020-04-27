@@ -14,7 +14,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 	/** @var MysqliSameLinkProvider */
 	protected $linkProvider;
 
-	protected function setUp()
+	protected function setUp() : void
 	{
 		$this->linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $this->linkProvider, 'test_gen_storage'))
@@ -50,7 +50,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		iterator_to_array($this->storage->listAll());
+		self::iterable_to_array($this->storage->listAll());
 	}
 
 	/**
@@ -61,7 +61,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		iterator_to_array($this->storage->listByCriteria(new IsNull(new Reference('x'))));
+		self::iterable_to_array($this->storage->listByCriteria(new IsNull(new Reference('x'))));
 	}
 
 	/**
@@ -72,7 +72,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		iterator_to_array($this->storage->getItems([TestId::generate($this->getIdColumnLength())]));
+		self::iterable_to_array($this->storage->getItems([TestId::generate($this->getIdColumnLength())]));
 	}
 
 	/**
@@ -94,7 +94,8 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		$this->storage->saveItem($id = TestId::generate($this->getIdColumnLength()), new TestEntity($id, 'name', 'none', null, 1));
+		$this->storage->saveItem($id = TestId::generate($this->getIdColumnLength()),
+			new TestEntity($id, 'name', 'none', null, 1));
 	}
 
 	/**

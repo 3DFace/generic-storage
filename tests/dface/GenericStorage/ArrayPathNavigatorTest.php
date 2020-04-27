@@ -11,7 +11,7 @@ class ArrayPathNavigatorTest extends TestCase
 
 	private $x;
 
-	protected function setUp()
+	protected function setUp() : void
 	{
 		parent::setUp();
 		$this->x = [
