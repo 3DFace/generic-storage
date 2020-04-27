@@ -14,10 +14,10 @@ class MysqliResult implements MyResult
 		$this->result = $result;
 	}
 
-	public function iterate() : \Traversable
+	public function iterate() : iterable
 	{
 		if($this->result === null){
-			throw new \LogicException('Query result is not traversable');
+			throw new \LogicException('Query result is NULL');
 		}
 		return $this->result;
 	}
@@ -25,7 +25,7 @@ class MysqliResult implements MyResult
 	public function fetchRow() : ?array
 	{
 		if($this->result === null){
-			throw new \LogicException('Query result is not traversable');
+			throw new \LogicException('Query result is NULL');
 		}
 		return $this->result->fetch_row();
 	}
@@ -33,7 +33,7 @@ class MysqliResult implements MyResult
 	public function fetchAssoc() : ?array
 	{
 		if($this->result === null){
-			throw new \LogicException('Query result is not traversable');
+			throw new \LogicException('Query result is NULL');
 		}
 		return $this->result->fetch_assoc();
 	}

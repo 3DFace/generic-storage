@@ -12,13 +12,13 @@ class MemoryManyToMany implements GenericManyToMany {
 	/** @var string[][] */
 	private $right = [];
 
-	public function getAllByLeft($left) : \traversable {
+	public function getAllByLeft($left) : iterable {
 		foreach($this->left[(string)$left] ?? [] as $right){
 			yield $right;
 		}
 	}
 
-	public function getAllByRight($right) : \traversable {
+	public function getAllByRight($right) : iterable {
 		foreach($this->right[(string)$right] ?? [] as $left){
 			yield $left;
 		}

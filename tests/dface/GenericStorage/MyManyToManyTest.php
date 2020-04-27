@@ -38,7 +38,7 @@ class MyManyToManyTest extends GenericManyToManyTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		iterator_to_array($this->assoc->getAllByLeft(TestId::generate($this->getIdLength())));
+		self::iterable_to_array($this->assoc->getAllByLeft(TestId::generate($this->getIdLength())));
 	}
 
 	/**
@@ -49,7 +49,7 @@ class MyManyToManyTest extends GenericManyToManyTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		iterator_to_array($this->assoc->getAllByRight(TestId::generate($this->getIdLength())));
+		self::iterable_to_array($this->assoc->getAllByRight(TestId::generate($this->getIdLength())));
 	}
 
 	/**

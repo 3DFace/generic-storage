@@ -23,10 +23,10 @@ abstract class GenericManyToManyTest extends TestCase {
 		$r = TestId::generate($this->getIdLength());
 		$this->assoc->add($l, $r);
 
-		$byLeft = iterator_to_array($this->assoc->getAllByLeft($l));
+		$byLeft = self::iterable_to_array($this->assoc->getAllByLeft($l));
 		$this->assertEquals([$r], $byLeft);
 
-		$byRight = iterator_to_array($this->assoc->getAllByRight($r));
+		$byRight = self::iterable_to_array($this->assoc->getAllByRight($r));
 		$this->assertEquals([$l], $byRight);
 	}
 
@@ -58,17 +58,17 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assoc->add($l1, $r);
 		$this->assoc->add($l2, $r);
 
-		$byLeft = iterator_to_array($this->assoc->getAllByLeft($l1));
+		$byLeft = self::iterable_to_array($this->assoc->getAllByLeft($l1));
 		$this->assertEquals([$r], $byLeft);
 
-		$byLeft = iterator_to_array($this->assoc->getAllByLeft($l2));
+		$byLeft = self::iterable_to_array($this->assoc->getAllByLeft($l2));
 		$this->assertEquals([$r], $byLeft);
 
-		$byRight = iterator_to_array($this->assoc->getAllByRight($r));
+		$byRight = self::iterable_to_array($this->assoc->getAllByRight($r));
 		$this->assertSetIs([$l1, $l2], $byRight);
 
 		$this->assoc->clearRight($r);
-		$byRight = iterator_to_array($this->assoc->getAllByRight($r));
+		$byRight = self::iterable_to_array($this->assoc->getAllByRight($r));
 		$this->assertEquals([], $byRight);
 	}
 
@@ -83,17 +83,17 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assoc->add($l, $r1);
 		$this->assoc->add($l, $r2);
 
-		$byLeft = iterator_to_array($this->assoc->getAllByLeft($l));
+		$byLeft = self::iterable_to_array($this->assoc->getAllByLeft($l));
 		$this->assertSetIs([$r1, $r2], $byLeft);
 
-		$byRight = iterator_to_array($this->assoc->getAllByRight($r1));
+		$byRight = self::iterable_to_array($this->assoc->getAllByRight($r1));
 		$this->assertEquals([$l], $byRight);
 
-		$byRight = iterator_to_array($this->assoc->getAllByRight($r2));
+		$byRight = self::iterable_to_array($this->assoc->getAllByRight($r2));
 		$this->assertEquals([$l], $byRight);
 
 		$this->assoc->clearLeft($l);
-		$byLeft = iterator_to_array($this->assoc->getAllByLeft($l));
+		$byLeft = self::iterable_to_array($this->assoc->getAllByLeft($l));
 		$this->assertEquals([], $byLeft);
 	}
 
@@ -106,10 +106,10 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assoc->add($l, $r);
 		$this->assoc->remove($l, $r);
 
-		$byLeft = iterator_to_array($this->assoc->getAllByLeft($l));
+		$byLeft = self::iterable_to_array($this->assoc->getAllByLeft($l));
 		$this->assertEquals([], $byLeft);
 
-		$byRight = iterator_to_array($this->assoc->getAllByRight($r));
+		$byRight = self::iterable_to_array($this->assoc->getAllByRight($r));
 		$this->assertEquals([], $byRight);
 	}
 
@@ -130,7 +130,7 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assoc->add($l2, $r4);
 
 		$this->assoc->clearLeft($l1);
-		$byLeft = iterator_to_array($this->assoc->getAllByLeft($l2));
+		$byLeft = self::iterable_to_array($this->assoc->getAllByLeft($l2));
 		$this->assertSetIs([$r3, $r4], $byLeft);
 	}
 
@@ -151,7 +151,7 @@ abstract class GenericManyToManyTest extends TestCase {
 		$this->assoc->add($l4, $r2);
 
 		$this->assoc->clearRight($r1);
-		$byRight = iterator_to_array($this->assoc->getAllByRight($r2));
+		$byRight = self::iterable_to_array($this->assoc->getAllByRight($r2));
 		$this->assertSetIs([$l3, $l4], $byRight);
 	}
 
@@ -185,6 +185,10 @@ abstract class GenericManyToManyTest extends TestCase {
 			/** @noinspection PhpUnitTestsInspection */
 			$this->assertTrue(\in_array($e, $set, false));
 		}
+	}
+
+	protected static function iterable_to_array($it, $use_keys = true){
+		return \is_array($it) ? $it : \iterator_to_array($it, $use_keys);
 	}
 
 }

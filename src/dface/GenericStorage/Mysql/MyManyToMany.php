@@ -50,9 +50,9 @@ class MyManyToMany implements GenericManyToMany
 
 	/**
 	 * @param $left
-	 * @return \traversable
+	 * @return iterable
 	 */
-	public function getAllByLeft($left) : \traversable
+	public function getAllByLeft($left) : iterable
 	{
 		return $this->linkProvider->withLink(function (MyLink $link) use ($left) {
 			yield from $this->getAllByColumn($link, true, $left);
@@ -61,9 +61,9 @@ class MyManyToMany implements GenericManyToMany
 
 	/**
 	 * @param $right
-	 * @return \traversable
+	 * @return iterable
 	 */
-	public function getAllByRight($right) : \traversable
+	public function getAllByRight($right) : iterable
 	{
 		return $this->linkProvider->withLink(function (MyLink $link) use ($right) {
 			yield from $this->getAllByColumn($link, false, $right);

@@ -6,7 +6,7 @@ namespace dface\GenericStorage\Mysql;
 interface MyResult
 {
 
-	public function iterate() : \Traversable;
+	public function iterate() : iterable;
 
 	public function fetchRow() : ?array;
 

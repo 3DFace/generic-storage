@@ -7,11 +7,11 @@ interface GenericSet
 {
 
 	/**
-	 * @return array|\traversable
+	 * @return iterable
 	 *
 	 * @throws GenericStorageError
 	 */
-	public function iterate() : \traversable;
+	public function iterate() : iterable;
 
 	/**
 	 * @param $id

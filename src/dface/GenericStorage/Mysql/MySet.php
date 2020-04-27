@@ -77,9 +77,9 @@ class MySet implements GenericSet
 	}
 
 	/**
-	 * @return \traversable
+	 * @return iterable
 	 */
-	public function iterate() : \traversable
+	public function iterate() : iterable
 	{
 		return $this->linkProvider->withLink(function (MyLink $link) {
 			/** @noinspection SqlResolve */

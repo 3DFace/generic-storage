@@ -25,7 +25,7 @@ class MemorySet implements GenericSet {
 		$this->set = [];
 	}
 
-	public function iterate() : \traversable {
+	public function iterate() : iterable {
 		foreach($this->set as $item){
 			yield $item;
 		}

@@ -8,19 +8,19 @@ interface GenericManyToMany
 
 	/**
 	 * @param $left
-	 * @return array|\traversable
+	 * @return iterable
 	 *
 	 * @throws GenericStorageError
 	 */
-	public function getAllByLeft($left) : \traversable;
+	public function getAllByLeft($left) : iterable;
 
 	/**
 	 * @param $right
-	 * @return array|\traversable
+	 * @return iterable
 	 *
 	 * @throws GenericStorageError
 	 */
-	public function getAllByRight($right) : \traversable;
+	public function getAllByRight($right) : iterable;
 
 	/**
 	 * @param $left

@@ -40,7 +40,7 @@ class MySetTest extends GenericSetTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		iterator_to_array($this->set->iterate());
+		self::iterable_to_array($this->set->iterate());
 	}
 
 	/**
