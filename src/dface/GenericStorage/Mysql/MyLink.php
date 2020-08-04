@@ -1,5 +1,4 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
 
 namespace dface\GenericStorage\Mysql;
 
@@ -20,6 +19,12 @@ interface MyLink
 	 * @throws UnderlyingStorageError
 	 */
 	public function query(string $query) : MyResult;
+
+	/**
+	 * @param string $query
+	 * @throws UnderlyingStorageError
+	 */
+	public function command(string $query) : void;
 
 	/**
 	 * @return int

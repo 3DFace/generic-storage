@@ -1,5 +1,4 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
 
 namespace dface\GenericStorage\Mysql;
 
@@ -8,14 +7,10 @@ use dface\GenericStorage\Generic\GenericSet;
 class MySet implements GenericSet
 {
 
-	/** @var MyLinkProvider */
-	private $linkProvider;
-	/** @var string */
-	private $tableNameEscaped;
-	/** @var string */
-	private $className;
-	/** @var bool */
-	private $temporary;
+	private MyLinkProvider $linkProvider;
+	private string $tableNameEscaped;
+	private string $className;
+	private bool $temporary;
 
 	public function __construct(
 		MyLinkProvider $linkProvider,
@@ -24,7 +19,7 @@ class MySet implements GenericSet
 		bool $temporary
 	) {
 		$this->linkProvider = $linkProvider;
-		$this->tableNameEscaped = str_replace('`', '``', $tableName);
+		$this->tableNameEscaped = \str_replace('`', '``', $tableName);
 		$this->className = $className;
 		$this->temporary = $temporary;
 	}
@@ -52,7 +47,7 @@ class MySet implements GenericSet
 		$this->linkProvider->withLink(function (MyLink $link) use ($id) {
 			$e_id = $link->escapeString($id);
 			/** @noinspection SqlResolve */
-			$link->query("INSERT IGNORE INTO `$this->tableNameEscaped` (`\$id`) VALUES (UNHEX('$e_id'))");
+			$link->command("INSERT IGNORE INTO `$this->tableNameEscaped` (`\$id`) VALUES (UNHEX('$e_id'))");
 		});
 	}
 
@@ -64,7 +59,7 @@ class MySet implements GenericSet
 		$this->linkProvider->withLink(function (MyLink $link) use ($id) {
 			$e_id = $link->escapeString($id);
 			/** @noinspection SqlResolve */
-			$link->query("DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
+			$link->command("DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=UNHEX('$e_id')");
 		});
 	}
 
@@ -72,7 +67,7 @@ class MySet implements GenericSet
 	{
 		$this->linkProvider->withLink(function (MyLink $link) {
 			/** @noinspection SqlResolve */
-			$link->query("DELETE FROM `$this->tableNameEscaped`");
+			$link->command("DELETE FROM `$this->tableNameEscaped`");
 		});
 	}
 
@@ -96,14 +91,14 @@ class MySet implements GenericSet
 	public function reset() : void
 	{
 		$this->linkProvider->withLink(function (MyLink $link) {
-			$link->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
+			$link->command("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
 			$tmp = $this->temporary ? 'TEMPORARY' : '';
 			$q1 = "CREATE $tmp TABLE `$this->tableNameEscaped` (
 				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 				`\$id` BINARY(16) NOT NULL UNIQUE,
 				`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 			) ENGINE=InnoDB";
-			$link->query($q1);
+			$link->command($q1);
 		});
 	}
 

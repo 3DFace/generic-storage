@@ -1,25 +1,15 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
 
 namespace dface\GenericStorage\Generic;
 
 class UniqueConstraintViolation extends \Exception implements GenericStorageError
 {
 
-	/** @var string */
-	private $attribute;
+	private string $attribute;
 	/** @var mixed */
 	private $value;
 
-	/**
-	 * UniqueConstraintViolation constructor.
-	 * @param string $attribute
-	 * @param mixed $value
-	 * @param string $message
-	 * @param int $code
-	 * @param \Exception $prev
-	 */
-	public function __construct(string $attribute, $value, $message = '', $code = 0, $prev = null)
+	public function __construct(string $attribute, $value, string $message = '', int $code = 0, \Exception $prev = null)
 	{
 		parent::__construct($message, $code, $prev);
 		$this->attribute = $attribute;

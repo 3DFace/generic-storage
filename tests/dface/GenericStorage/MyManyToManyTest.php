@@ -1,5 +1,4 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
 
 namespace dface\GenericStorage;
 
@@ -9,8 +8,7 @@ use dface\GenericStorage\Mysql\MyManyToMany;
 class MyManyToManyTest extends GenericManyToManyTest
 {
 
-	/** @var MysqliSameLinkProvider */
-	private $linkProvider;
+	private MysqliSameLinkProvider $linkProvider;
 
 	protected function setUp() : void
 	{
@@ -27,7 +25,7 @@ class MyManyToManyTest extends GenericManyToManyTest
 	private function broke() : void
 	{
 		/** @noinspection SqlResolve */
-		$this->linkProvider->getLink()->query('DROP TABLE test_many_to_many');
+		$this->linkProvider->getLink()->command('DROP TABLE test_many_to_many');
 	}
 
 	/**

@@ -1,31 +1,32 @@
 {
-	"name": "dface/generic-storage",
-	"description": "Generic storage structures (key-value, set, association) with mysql- and memory-persistence",
-	"type": "library",
-	"license": "MIT",
-	"authors": [{
-		"name": "Denis Ponomarev",
-		"email": "ponomarev@gmail.com"
-	}],
-	"minimum-stability": "dev",
-	"require": {
-		"php": ">=7.2",
-		"dface/criteria": "dev-master",
-		"dface/sql-placeholders": "dev-master",
-		"ext-mysqli": "*",
-		"ext-json": "*"
-	},
-	"require-dev": {
-		"phpunit/phpunit": "^6.4"
-	},
-	"autoload": {
-		"psr-0": {
-			"dface\\GenericStorage\\": "src/"
-		}
-	},
-	"autoload-dev": {
-		"psr-0": {
-			"dface\\GenericStorage\\": "tests/"
-		}
-	}
+  "name": "dface/generic-storage",
+  "description": "Generic storage structures (key-value, set, association) with mysql and memory persistence",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Denis Ponomarev",
+      "email": "ponomarev@gmail.com"
+    }
+  ],
+  "require": {
+    "php": "^7.4",
+    "dface/criteria": "^2.0",
+    "dface/sql-placeholders": "^2.0",
+    "ext-mysqli": "*",
+    "ext-json": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.2"
+  },
+  "autoload": {
+    "psr-0": {
+      "dface\\GenericStorage\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-0": {
+      "dface\\GenericStorage\\": "tests/"
+    }
+  }
 }

@@ -1,12 +1,11 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
 
 namespace dface\GenericStorage\Memory;
 
-use dface\criteria\ArrayGraphNavigator;
-use dface\criteria\Criteria;
-use dface\criteria\PredicateCriteriaBuilder;
-use dface\criteria\SimpleComparator;
+use dface\criteria\builder\ArrayGraphNavigator;
+use dface\criteria\builder\PredicateCriteriaBuilder;
+use dface\criteria\builder\SimpleComparator;
+use dface\criteria\node\Criteria;
 use dface\GenericStorage\Generic\ArrayPathNavigator;
 use dface\GenericStorage\Generic\GenericStorage;
 use dface\GenericStorage\Generic\InvalidDataType;
@@ -17,20 +16,16 @@ class MemoryStorage implements GenericStorage
 {
 
 	/** @var string */
-	private $className;
-	private $storage = [];
-	/** @var PredicateCriteriaBuilder */
-	private $criteriaBuilder;
-	/** @var ArrayGraphNavigator */
-	private $navigator;
-	/** @var SimpleComparator */
-	private $comparator;
-	/** @var string[]|null */
-	private $revisionPropertyPath;
-	/** @var string[]|null */
-	private $seqIdPropertyPath;
-	/** @var int int */
-	private $autoIncrement = 0;
+	private string $className;
+	private array $storage = [];
+	private PredicateCriteriaBuilder $criteriaBuilder;
+	private ArrayGraphNavigator $navigator;
+	private SimpleComparator $comparator;
+	/** @var string[] */
+	private array $revisionPropertyPath;
+	/** @var string[] */
+	private array $seqIdPropertyPath;
+	private int $autoIncrement = 0;
 
 	public function __construct(
 		string $className,
@@ -44,12 +39,8 @@ class MemoryStorage implements GenericStorage
 			$this->navigator,
 			$this->comparator
 		);
-		if ($revisionPropertyName !== null) {
-			$this->revisionPropertyPath = explode('/', $revisionPropertyName);
-		}
-		if ($seqIdPropertyName !== null) {
-			$this->seqIdPropertyPath = explode('/', $seqIdPropertyName);
-		}
+		$this->revisionPropertyPath = $revisionPropertyName !== null ? \explode('/', $revisionPropertyName) : [];
+		$this->seqIdPropertyPath = $seqIdPropertyName !== null ? \explode('/', $seqIdPropertyName) : [];
 	}
 
 	public function getItem($id) : ?\JsonSerializable
@@ -92,7 +83,7 @@ class MemoryStorage implements GenericStorage
 		$k = (string)$id;
 		$record = $this->storage[$k] ?? null;
 		$this->autoIncrement++;
-		if($record === null){
+		if ($record === null) {
 			$record = [null, 0, $this->autoIncrement];
 		}
 		[, $rev, $seq_id] = $record;
@@ -166,10 +157,10 @@ class MemoryStorage implements GenericStorage
 
 	private function deserialize(array $arr, int $rev, int $seq_id)
 	{
-		if ($this->revisionPropertyPath !== null) {
+		if ($this->revisionPropertyPath) {
 			ArrayPathNavigator::setPropertyValue($arr, $this->revisionPropertyPath, $rev);
 		}
-		if ($this->seqIdPropertyPath !== null) {
+		if ($this->seqIdPropertyPath) {
 			ArrayPathNavigator::setPropertyValue($arr, $this->seqIdPropertyPath, $seq_id);
 		}
 		$cls = $this->className;

@@ -1,5 +1,4 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
 
 namespace dface\GenericStorage;
 
@@ -9,12 +8,8 @@ use dface\GenericStorage\Mysql\MysqliLink;
 class MysqliSameLinkProvider implements MyLinkProvider
 {
 
-	/** @var MysqliLink */
-	private $link;
+	private MysqliLink $link;
 
-	/**
-	 * @param \mysqli $link
-	 */
 	public function __construct(\mysqli $link)
 	{
 		$this->link = new MysqliLink($link);

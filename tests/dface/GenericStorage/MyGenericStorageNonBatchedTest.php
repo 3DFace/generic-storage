@@ -1,18 +1,16 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
 
 namespace dface\GenericStorage;
 
-use dface\criteria\IsNull;
-use dface\criteria\Reference;
+use dface\criteria\node\IsNull;
+use dface\criteria\node\Reference;
 use dface\GenericStorage\Generic\UnderlyingStorageError;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
 
 class MyGenericStorageNonBatchedTest extends GenericStorageTest
 {
 
-	/** @var MysqliSameLinkProvider */
-	protected $linkProvider;
+	protected MysqliSameLinkProvider $linkProvider;
 
 	protected function setUp() : void
 	{
@@ -39,7 +37,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 	private function broke() : void
 	{
 		/** @noinspection SqlResolve */
-		$this->linkProvider->getLink()->query('DROP TABLE test_gen_storage');
+		$this->linkProvider->getLink()->command('DROP TABLE test_gen_storage');
 	}
 
 	/**

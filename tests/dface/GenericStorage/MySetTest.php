@@ -1,5 +1,4 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
 
 namespace dface\GenericStorage;
 
@@ -9,8 +8,7 @@ use dface\GenericStorage\Mysql\MySet;
 class MySetTest extends GenericSetTest
 {
 
-	/** @var MysqliSameLinkProvider */
-	private $linkProvider;
+	private MysqliSameLinkProvider $linkProvider;
 
 	protected function setUp() : void
 	{
@@ -29,7 +27,7 @@ class MySetTest extends GenericSetTest
 	private function broke() : void
 	{
 		/** @noinspection SqlResolve */
-		$this->linkProvider->getLink()->query('DROP TABLE test_set');
+		$this->linkProvider->getLink()->command('DROP TABLE test_set');
 	}
 
 	/**

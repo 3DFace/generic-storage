@@ -1,5 +1,5 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
+
 
 error_reporting(E_ALL);
 

@@ -1,10 +1,9 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
 
 namespace dface\GenericStorage\Mysql;
 
-use dface\criteria\Criteria;
-use dface\criteria\SqlCriteriaBuilder;
+use dface\criteria\builder\SqlCriteriaBuilder;
+use dface\criteria\node\Criteria;
 use dface\GenericStorage\Generic\ArrayPathNavigator;
 use dface\GenericStorage\Generic\GenericStorage;
 use dface\GenericStorage\Generic\GenericStorageError;
@@ -20,52 +19,37 @@ use dface\sql\placeholders\FormatterException;
 use dface\sql\placeholders\Parser;
 use dface\sql\placeholders\ParserException;
 
-class MyStorage implements GenericStorage{
+class MyStorage implements GenericStorage
+{
 
-	/** @var string */
-	private $className;
-	/** @var MyLinkProvider */
-	private $linkProvider;
-	/** @var string */
+	private string $className;
+	private MyLinkProvider $linkProvider;
 	private $tableNameEscaped;
-	/** @var string */
-	private $idPropertyName;
-	/** @var int */
-	private $idColumnDef;
-	/** @var bool */
-	private $idBin;
+	private ?string $idPropertyName;
+	private string $idColumnDef;
+	private bool $idBin;
 	/** @var string[] */
-	private $seqIdPropertyPath;
-	/** @var string */
-	private $seqIdPropertyName;
+	private array $seqIdPropertyPath;
+	private ?string $seqIdPropertyName;
 	/** @var string[] */
-	private $revisionPropertyPath;
+	private array $revisionPropertyPath;
 	/** @var string[] */
-	private $add_generated_columns;
+	private array $add_generated_columns;
 	/** @var string[] */
-	private $add_columns;
+	private array $add_columns;
 	/** @var string[] */
-	private $add_columns_data;
+	private array $add_columns_data;
 	/** @var string[] */
-	private $add_indexes;
-	/** @var bool */
-	private $has_unique_secondary;
-	/** @var bool */
-	private $temporary;
-	/** @var SqlCriteriaBuilder */
-	private $criteriaBuilder;
-	/** @var string */
-	private $selectAllFromTable;
-	/** @var int */
-	private $batchListSize;
-	/** @var int */
-	private $idBatchSize;
-	/** @var string */
-	private $dataColumnDef;
-	/** @var int */
-	private $dataMaxSize;
-	/** @var bool */
-	private $compressed;
+	private array $add_indexes;
+	private bool $has_unique_secondary;
+	private bool $temporary;
+	private SqlCriteriaBuilder $criteriaBuilder;
+	private string $selectAllFromTable;
+	private int $batchListSize;
+	private int $idBatchSize;
+	private string $dataColumnDef;
+	private int $dataMaxSize;
+	private bool $compressed;
 
 	/** @var Formatter */
 	private $formatter;
@@ -95,10 +79,10 @@ class MyStorage implements GenericStorage{
 		string $className,
 		MyLinkProvider $link_provider,
 		string $tableName,
-		string $idPropertyName = null,
+		?string $idPropertyName = null,
 		string $idColumnDef = 'BINARY(16)',
-		string $revisionPropertyName = null,
-		string $seqIdPropertyName = null,
+		?string $revisionPropertyName = null,
+		?string $seqIdPropertyName = null,
 		array $add_generated_columns = [],
 		array $add_columns = [],
 		array $add_indexes = [],
@@ -114,24 +98,20 @@ class MyStorage implements GenericStorage{
 		$this->formatter = new DefaultFormatter();
 		$this->parser = new DefaultParser();
 		$this->className = $className;
-		$this->tableNameEscaped = str_replace('`', '``', $tableName);
+		$this->tableNameEscaped = \str_replace('`', '``', $tableName);
 		$this->idPropertyName = $idPropertyName;
 		$this->idColumnDef = $idColumnDef;
 		$this->idBin = \stripos($idColumnDef, 'binary') !== false;
-		if ($revisionPropertyName !== null) {
-			$this->revisionPropertyPath = explode('/', $revisionPropertyName);
-		}
+		$this->revisionPropertyPath = $revisionPropertyName !== null ? \explode('/', $revisionPropertyName) : [];
 		$this->seqIdPropertyName = $seqIdPropertyName;
-		if ($seqIdPropertyName !== null) {
-			$this->seqIdPropertyPath = explode('/', $seqIdPropertyName);
-		}
+		$this->seqIdPropertyPath = $seqIdPropertyName !== null ? \explode('/', $seqIdPropertyName) : [];
 		$this->add_generated_columns = $add_generated_columns;
 		$this->add_columns = $add_columns;
 		$this->add_columns_data = [];
 		foreach ($this->add_columns as $i => $x) {
 			$this->add_columns_data[$i] = [
-				'escaped' => str_replace('`', '``', $i),
-				'path' => explode('/', $i),
+				'escaped' => \str_replace('`', '``', $i),
+				'path' => \explode('/', $i),
 			];
 		}
 		$this->add_indexes = $add_indexes;
@@ -207,7 +187,7 @@ class MyStorage implements GenericStorage{
 	/**
 	 * @param $id
 	 * @param \JsonSerializable $item
-	 * @param int $expectedRevision
+	 * @param int|null $expectedRevision
 	 */
 	public function saveItem($id, \JsonSerializable $item, int $expectedRevision = null) : void
 	{
@@ -217,10 +197,10 @@ class MyStorage implements GenericStorage{
 			}
 
 			$arr = $item->jsonSerialize();
-			if ($this->revisionPropertyPath !== null) {
+			if ($this->revisionPropertyPath) {
 				ArrayPathNavigator::unsetProperty($arr, $this->revisionPropertyPath);
 			}
-			if ($this->seqIdPropertyPath !== null) {
+			if ($this->seqIdPropertyPath) {
 				ArrayPathNavigator::unsetProperty($arr, $this->seqIdPropertyPath);
 			}
 			$add_column_set_node = $this->createUpdateColumnsFragment($link, $arr);
@@ -271,11 +251,11 @@ class MyStorage implements GenericStorage{
 	 * @param $id
 	 * @param array $arr
 	 * @return null|string
-	 * @throws GenericStorageError
+	 * @throws GenericStorageError|\JsonException
 	 */
 	private function serialize($id, array $arr) : ?string
 	{
-		$data = \json_encode($arr, JSON_UNESCAPED_UNICODE);
+		$data = \json_encode($arr, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE);
 		if (($len = \strlen($data)) > $this->dataMaxSize) {
 			throw new UnderlyingStorageError("Can't write $len bytes as $this->className#$id data at ".self::class);
 		}
@@ -293,7 +273,7 @@ class MyStorage implements GenericStorage{
 				$e_id_quoted = "UNHEX($e_id_quoted)";
 			}
 			/** @noinspection SqlResolve */
-			$link->query("DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=$e_id_quoted");
+			$link->command("DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=$e_id_quoted");
 		});
 	}
 
@@ -304,7 +284,7 @@ class MyStorage implements GenericStorage{
 	{
 		$this->linkProvider->withLink(function (MyLink $link) use ($criteria) {
 			/** @noinspection SqlResolve */
-			$link->query("DELETE FROM `$this->tableNameEscaped` WHERE ".$this->makeWhere($link, $criteria));
+			$link->command("DELETE FROM `$this->tableNameEscaped` WHERE ".$this->makeWhere($link, $criteria));
 		});
 	}
 
@@ -312,7 +292,7 @@ class MyStorage implements GenericStorage{
 	{
 		$this->linkProvider->withLink(function (MyLink $link) {
 			/** @noinspection SqlResolve */
-			$link->query("DELETE FROM `$this->tableNameEscaped`");
+			$link->command("DELETE FROM `$this->tableNameEscaped`");
 		});
 	}
 
@@ -331,7 +311,7 @@ class MyStorage implements GenericStorage{
 		}
 		$e_data = $link->escapeString($data);
 		/** @noinspection SqlResolve */
-		$link->query("INSERT INTO `$this->tableNameEscaped` SET `\$id`=$e_id_quoted, `\$data`='$e_data' $add_column_set_node");
+		$link->command("INSERT INTO `$this->tableNameEscaped` SET `\$id`=$e_id_quoted, `\$data`='$e_data' $add_column_set_node");
 	}
 
 	/**
@@ -339,8 +319,9 @@ class MyStorage implements GenericStorage{
 	 * @param string $id
 	 * @param string $data
 	 * @param string $add_column_set_node
-	 * @param int $expected_rev
-	 * @throws UnexpectedRevision|UnderlyingStorageError
+	 * @param int|null $expected_rev
+	 * @throws UnderlyingStorageError
+	 * @throws UnexpectedRevision
 	 */
 	private function update(
 		MyLink $link,
@@ -358,10 +339,10 @@ class MyStorage implements GenericStorage{
 		$update = "UPDATE `$this->tableNameEscaped` SET `\$data`='$e_data', `\$revision`=`\$revision`+1 ".
 			"$add_column_set_node WHERE `\$id`=$e_id_quoted";
 		if ($expected_rev === null) {
-			$link->query($update);
+			$link->command($update);
 		}else {
 			$update .= " AND `\$revision`=$expected_rev";
-			$link->query($update);
+			$link->command($update);
 			$affected = $link->getAffectedRows();
 			if ($affected === 0) {
 				/** @noinspection SqlResolve */
@@ -376,7 +357,7 @@ class MyStorage implements GenericStorage{
 	/**
 	 * @param MyLink $link
 	 * @param string $id
-	 * @param string $data
+	 * @param string|null $data
 	 * @param string $add_column_set_str
 	 * @throws UnderlyingStorageError
 	 */
@@ -390,7 +371,7 @@ class MyStorage implements GenericStorage{
 		/** @noinspection SqlResolve */
 		$q1 = "INSERT INTO `$this->tableNameEscaped` SET `\$id`=$e_id_quoted, `\$data`='$e_data' $add_column_set_str \n".
 			"ON DUPLICATE KEY UPDATE `\$data`='$e_data', `\$revision`=`\$revision`+1 $add_column_set_str";
-		$link->query($q1);
+		$link->command($q1);
 	}
 
 	/**
@@ -479,13 +460,13 @@ class MyStorage implements GenericStorage{
 						$obj = $this->deserialize($rec);
 						$arr = $obj->jsonSerialize();
 					}else {
-						$arr = \json_decode($rec['$data'], true);
+						$arr = \json_decode($rec['$data'], true, 512, JSON_THROW_ON_ERROR);
 					}
 					// TODO: don't update if columns contain correct values
 					$add_column_set_str = $this->createUpdateColumnsFragment($link, $arr);
 					$e_id = $link->escapeString($rec['$seq_id']);
 					/** @noinspection SqlResolve */
-					$link->query("UPDATE `$this->tableNameEscaped` SET $add_column_set_str WHERE `\$seq_id`='$e_id'");
+					$link->command("UPDATE `$this->tableNameEscaped` SET $add_column_set_str WHERE `\$seq_id`='$e_id'");
 				}
 			}
 		});
@@ -497,7 +478,7 @@ class MyStorage implements GenericStorage{
 	 * @param int $limit
 	 * @param $orderDef
 	 * @return \Generator|null
-	 * @throws UnderlyingStorageError
+	 * @throws UnderlyingStorageError|\JsonException
 	 */
 	private function iterateOverDecoded(MyLink $link, string $q, array $orderDef, int $limit) : ?\Generator
 	{
@@ -507,16 +488,22 @@ class MyStorage implements GenericStorage{
 		}
 	}
 
+	/**
+	 * @param array $rec
+	 * @return mixed
+	 * @throws \JsonException
+	 */
 	private function deserialize(array $rec)
 	{
-		$arr = \json_decode($rec['$data'], true);
-		if ($this->revisionPropertyPath !== null) {
+		$arr = \json_decode($rec['$data'], true, 512, JSON_THROW_ON_ERROR);
+		if ($this->revisionPropertyPath) {
 			ArrayPathNavigator::setPropertyValue($arr, $this->revisionPropertyPath, $rec['$revision']);
 		}
-		if ($this->seqIdPropertyPath !== null) {
+		if ($this->seqIdPropertyPath) {
 			ArrayPathNavigator::setPropertyValue($arr, $this->seqIdPropertyPath, $rec['$seq_id']);
 		}
-		return \call_user_func([$this->className, 'deserialize'], $arr);
+		/** @noinspection PhpUndefinedMethodInspection */
+		return $this->className::deserialize($arr);
 	}
 
 	/**
@@ -604,7 +591,7 @@ class MyStorage implements GenericStorage{
 				default:
 					if (isset($this->add_columns[$property]) || isset($this->add_generated_columns[$property])) {
 						$e_col = '`'.str_replace('`', '``', $property).'`';
-					}else{
+					}else {
 						$dot_ref = '$.'.\str_replace('/', '.', $property);
 						$e_ref = $link->escapeString($dot_ref);
 						$e_col = "JSON_UNQUOTE(JSON_EXTRACT(`\$data`, '$e_ref'))";
@@ -727,17 +714,17 @@ class MyStorage implements GenericStorage{
 			}, $this->add_columns, array_keys($this->add_columns));
 			$add_columns = $add_columns ? ','.implode("\n\t\t\t,", $add_columns) : '';
 			$add_generated_columns = '';
-			if($this->add_generated_columns){
+			if ($this->add_generated_columns) {
 				$add_gen_arr = [];
-				foreach ($this->add_generated_columns as $i=>$def){
+				foreach ($this->add_generated_columns as $i => $def) {
 					$add_gen_arr[] = "`$i` $def";
 				}
 				$add_generated_columns = ','.implode("\n\t\t\t,", $add_gen_arr);
 			}
 			$add_indexes = $this->add_indexes ? ','.implode("\n\t\t\t,", $this->add_indexes) : '';
-			$link->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
+			$link->command("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
 			$tmp = $this->temporary ? 'TEMPORARY' : '';
-			$link->query("CREATE $tmp TABLE `$this->tableNameEscaped` (
+			$link->command("CREATE $tmp TABLE `$this->tableNameEscaped` (
 				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
 				`\$id` {$this->idColumnDef} NOT NULL,
 				`\$data` {$this->dataColumnDef},

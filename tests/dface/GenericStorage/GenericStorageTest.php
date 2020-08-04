@@ -1,34 +1,34 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
 
 namespace dface\GenericStorage;
 
-use dface\criteria\Equals;
-use dface\criteria\IntegerConstant;
-use dface\criteria\NotEquals;
-use dface\criteria\Reference;
-use dface\criteria\StringConstant;
+use dface\criteria\node\Equals;
+use dface\criteria\node\IntegerConstant;
+use dface\criteria\node\NotEquals;
+use dface\criteria\node\Reference;
+use dface\criteria\node\StringConstant;
 use dface\GenericStorage\Generic\GenericStorage;
 use dface\GenericStorage\Generic\InvalidDataType;
 use dface\GenericStorage\Generic\ItemAlreadyExists;
 use dface\GenericStorage\Generic\UnexpectedRevision;
 use PHPUnit\Framework\TestCase;
 
-abstract class GenericStorageTest extends TestCase {
+abstract class GenericStorageTest extends TestCase
+{
 
-	/** @var GenericStorage */
-	protected $storage;
-	/** @var bool */
-	protected $seq_id_injected = false;
+	protected GenericStorage $storage;
+	protected bool $seq_id_injected = false;
 
-	protected function getIdColumnLength() : int {
+	protected function getIdColumnLength() : int
+	{
 		return 16;
 	}
 
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testWrongTypeDoNotPass() : void {
+	public function testWrongTypeDoNotPass() : void
+	{
 		$s = $this->storage;
 		$uid = TestId::generate($this->getIdColumnLength());
 		$this->expectException(InvalidDataType::class);
@@ -38,42 +38,45 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testCorrectlySaved() : void {
+	public function testCorrectlySaved() : void
+	{
 		$s = $this->storage;
 		$uid = TestId::generate($this->getIdColumnLength());
 		$entity = new TestEntity($uid, 'Test User', 'user@test.php', new TestData('asd', 10), 1);
 		$s->saveItem($uid, $entity);
 		$loaded = $s->getItem($uid);
 		$expected = $entity;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected = $expected->withSeqId(1);
 		}
-		$this->assertEquals($expected, $loaded);
+		self::assertEquals($expected, $loaded);
 	}
 
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testRemoved() : void {
+	public function testRemoved() : void
+	{
 		$s = $this->storage;
 		$uid = TestId::generate($this->getIdColumnLength());
 		$entity = new TestEntity($uid, 'Test User', 'user@test.php', null, 1);
 		$s->saveItem($uid, $entity);
 		$loaded = $s->getItem($uid);
 		$expected = $entity;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected = $expected->withSeqId(1);
 		}
-		$this->assertEquals($expected, $loaded);
+		self::assertEquals($expected, $loaded);
 		$s->removeItem($uid);
 		$must_be_null = $s->getItem($uid);
-		$this->assertNull($must_be_null);
+		self::assertNull($must_be_null);
 	}
 
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testRemovedByCriteria() : void {
+	public function testRemovedByCriteria() : void
+	{
 		$s = $this->storage;
 		$uid1 = TestId::generate($this->getIdColumnLength());
 		$uid2 = TestId::generate($this->getIdColumnLength());
@@ -86,10 +89,10 @@ abstract class GenericStorageTest extends TestCase {
 
 		$loaded_arr = self::iterable_to_array($s->listAll());
 		$expected2 = $entity2;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected2 = $expected2->withSeqId(2);
 		}
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid2 => $expected2,
 		], $loaded_arr);
 	}
@@ -97,7 +100,8 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testCleared() : void {
+	public function testCleared() : void
+	{
 		$s = $this->storage;
 		$uid1 = TestId::generate($this->getIdColumnLength());
 		$uid2 = TestId::generate($this->getIdColumnLength());
@@ -109,13 +113,14 @@ abstract class GenericStorageTest extends TestCase {
 		$s->clear();
 
 		$loaded_arr = self::iterable_to_array($s->listAll());
-		$this->assertEmpty($loaded_arr);
+		self::assertEmpty($loaded_arr);
 	}
 
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testOverwrite() : void {
+	public function testOverwrite() : void
+	{
 		$s = $this->storage;
 		$uid = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
@@ -124,16 +129,17 @@ abstract class GenericStorageTest extends TestCase {
 		$s->saveItem($uid, $entity2);
 		$loaded = $s->getItem($uid);
 		$expected = $entity2->withRevision(2);
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected = $expected->withSeqId(1);
 		}
-		$this->assertEquals($expected, $loaded);
+		self::assertEquals($expected, $loaded);
 	}
 
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testOverwriteRevisionGrows() : void {
+	public function testOverwriteRevisionGrows() : void
+	{
 		$s = $this->storage;
 		$uid = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
@@ -143,16 +149,17 @@ abstract class GenericStorageTest extends TestCase {
 		$s->saveItem($uid, $entity1);
 		$loaded = $s->getItem($uid);
 		$expected = $entity1->withRevision(3);
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected = $expected->withSeqId(1);
 		}
-		$this->assertEquals($expected, $loaded);
+		self::assertEquals($expected, $loaded);
 	}
 
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testRemoveResetRevision() : void {
+	public function testRemoveResetRevision() : void
+	{
 		$s = $this->storage;
 		$uid = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
@@ -162,16 +169,17 @@ abstract class GenericStorageTest extends TestCase {
 		$s->saveItem($uid, $entity1);
 		$loaded = $s->getItem($uid);
 		$expected = $entity1->withRevision(1);
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected = $expected->withSeqId(3);
 		}
-		$this->assertEquals($expected, $loaded);
+		self::assertEquals($expected, $loaded);
 	}
 
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testExpectedNew() : void {
+	public function testExpectedNew() : void
+	{
 		$s = $this->storage;
 		$uid = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
@@ -184,7 +192,8 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testExpected1() : void {
+	public function testExpected1() : void
+	{
 		$s = $this->storage;
 		$uid = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
@@ -198,7 +207,8 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testIndexWorks() : void {
+	public function testIndexWorks() : void
+	{
 		$s = $this->storage;
 		$uid1 = TestId::generate($this->getIdColumnLength());
 		$uid2 = TestId::generate($this->getIdColumnLength());
@@ -208,29 +218,29 @@ abstract class GenericStorageTest extends TestCase {
 		$s->saveItem($uid2, $entity2);
 
 		$expected1 = $entity1;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected1 = $expected1->withSeqId(1);
 		}
 		$expected2 = $entity2;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected2 = $expected2->withSeqId(2);
 		}
 
 		$criteria = new Equals(new Reference('email'), new StringConstant('user@test.php'));
 		$loaded_arr = self::iterable_to_array($s->listByCriteria($criteria));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid1 => $expected1,
 			(string)$uid2 => $expected2,
 		], $loaded_arr);
 
 		$criteria = new Equals(new Reference('email'), new StringConstant('no@test.php'));
 		$loaded_arr = self::iterable_to_array($s->listByCriteria($criteria));
-		$this->assertEquals([], $loaded_arr);
+		self::assertEquals([], $loaded_arr);
 
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$criteria = new Equals(new Reference('seq_id'), new IntegerConstant(1));
 			$loaded_arr = self::iterable_to_array($s->listByCriteria($criteria));
-			$this->assertEquals([
+			self::assertEquals([
 				(string)$uid1 => $expected1,
 			], $loaded_arr);
 		}
@@ -239,32 +249,34 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testIdIndexWorks() : void {
+	public function testIdIndexWorks() : void
+	{
 		$s = $this->storage;
 		$uid1 = TestId::generate($this->getIdColumnLength());
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'user@test.php', null, 1);
 		$s->saveItem($uid1, $entity1);
 
 		$expected1 = $entity1;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected1 = $expected1->withSeqId(1);
 		}
 
 		$criteria = new Equals(new Reference('id'), new StringConstant((string)$uid1));
 		$loaded_arr = self::iterable_to_array($s->listByCriteria($criteria));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid1 => $expected1,
 		], $loaded_arr);
 
 		$criteria = new Equals(new Reference('id'), new StringConstant('asd'));
 		$loaded_arr = self::iterable_to_array($s->listByCriteria($criteria));
-		$this->assertEquals([], $loaded_arr);
+		self::assertEquals([], $loaded_arr);
 	}
 
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testMultiGetWorks() : void {
+	public function testMultiGetWorks() : void
+	{
 		$s = $this->storage;
 		$uid1 = TestId::generate($this->getIdColumnLength());
 		$uid2 = TestId::generate($this->getIdColumnLength());
@@ -277,16 +289,16 @@ abstract class GenericStorageTest extends TestCase {
 		$s->saveItem($uid3, $entity3);
 
 		$expected1 = $entity1;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected1 = $expected1->withSeqId(1);
 		}
 		$expected3 = $entity3;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected3 = $expected3->withSeqId(3);
 		}
 
 		$loaded_arr = self::iterable_to_array($s->getItems([$uid1, $uid3]));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid1 => $expected1,
 			(string)$uid3 => $expected3,
 		], $loaded_arr);
@@ -295,7 +307,8 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testListAllWorks() : void {
+	public function testListAllWorks() : void
+	{
 		$s = $this->storage;
 		$uid1 = TestId::generate($this->getIdColumnLength());
 		$uid2 = TestId::generate($this->getIdColumnLength());
@@ -305,16 +318,16 @@ abstract class GenericStorageTest extends TestCase {
 		$s->saveItem($uid2, $entity2);
 
 		$expected1 = $entity1;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected1 = $expected1->withSeqId(1);
 		}
 		$expected2 = $entity2;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected2 = $expected2->withSeqId(2);
 		}
 
 		$loaded_arr = self::iterable_to_array($s->listAll());
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid1 => $expected1,
 			(string)$uid2 => $expected2,
 		], $loaded_arr);
@@ -323,7 +336,8 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testListAllOrderedWorks() : void {
+	public function testListAllOrderedWorks() : void
+	{
 		$s = $this->storage;
 		$uid1 = TestId::generate($this->getIdColumnLength());
 		$uid2 = TestId::generate($this->getIdColumnLength());
@@ -338,21 +352,21 @@ abstract class GenericStorageTest extends TestCase {
 		$expected1 = $entity1;
 		$expected2 = $entity2;
 		$expected3 = $entity3;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected1 = $expected1->withSeqId(1);
 			$expected2 = $expected2->withSeqId(2);
 			$expected3 = $expected3->withSeqId(3);
 		}
 
 		$loaded_arr = self::iterable_to_array($s->listAll([['email', false]]));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid3 => $expected3,
 			(string)$uid2 => $expected2,
 			(string)$uid1 => $expected1
 		], $loaded_arr);
 
 		$loaded_arr = self::iterable_to_array($s->listAll([['email', true]]));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid1 => $expected1,
 			(string)$uid2 => $expected2,
 			(string)$uid3 => $expected3,
@@ -362,7 +376,8 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testListAllOrderedWithLimitWorks() : void {
+	public function testListAllOrderedWithLimitWorks() : void
+	{
 		$s = $this->storage;
 		$uid1 = TestId::generate($this->getIdColumnLength());
 		$uid2 = TestId::generate($this->getIdColumnLength());
@@ -377,20 +392,20 @@ abstract class GenericStorageTest extends TestCase {
 		$expected1 = $entity1;
 		$expected2 = $entity2;
 		$expected3 = $entity3;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected1 = $expected1->withSeqId(1);
 			$expected2 = $expected2->withSeqId(2);
 			$expected3 = $expected3->withSeqId(3);
 		}
 
 		$loaded_arr = self::iterable_to_array($s->listAll([['email', false]], 2));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid3 => $expected3,
 			(string)$uid2 => $expected2,
 		], $loaded_arr);
 
 		$loaded_arr = self::iterable_to_array($s->listAll([['email', true]], 2));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid1 => $expected1,
 			(string)$uid2 => $expected2,
 		], $loaded_arr);
@@ -399,7 +414,8 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testListAllUnorderedWithLimitWorks() : void {
+	public function testListAllUnorderedWithLimitWorks() : void
+	{
 		$s = $this->storage;
 		$uid1 = TestId::generate($this->getIdColumnLength());
 		$uid2 = TestId::generate($this->getIdColumnLength());
@@ -414,14 +430,14 @@ abstract class GenericStorageTest extends TestCase {
 		$expected1 = $entity1;
 		$expected2 = $entity2;
 		$expected3 = $entity3;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected1 = $expected1->withSeqId(1);
 			$expected2 = $expected2->withSeqId(2);
 			$expected3 = $expected3->withSeqId(3);
 		}
 
 		$loaded_arr = self::iterable_to_array($s->listAll([], 3));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid1 => $expected1,
 			(string)$uid2 => $expected2,
 			(string)$uid3 => $expected3,
@@ -431,7 +447,8 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testListFilteredAndOrderedWorks() : void {
+	public function testListFilteredAndOrderedWorks() : void
+	{
 		$s = $this->storage;
 		$uid1 = TestId::generate($this->getIdColumnLength());
 		$uid2 = TestId::generate($this->getIdColumnLength());
@@ -445,7 +462,7 @@ abstract class GenericStorageTest extends TestCase {
 
 		$expected1 = $entity1;
 		$expected3 = $entity3;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected1 = $expected1->withSeqId(1);
 			$expected3 = $expected3->withSeqId(3);
 		}
@@ -453,13 +470,13 @@ abstract class GenericStorageTest extends TestCase {
 		$c = new NotEquals(new Reference('email'), new StringConstant('b@test.php'));
 
 		$loaded_arr = self::iterable_to_array($s->listByCriteria($c, [['email', false]]));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid3 => $expected3,
 			(string)$uid1 => $expected1,
 		], $loaded_arr);
 
 		$loaded_arr = self::iterable_to_array($s->listByCriteria($c, [['email', true]]));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid1 => $expected1,
 			(string)$uid3 => $expected3,
 		], $loaded_arr);
@@ -468,7 +485,8 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testListFilteredAndOrderedWithLimitWorks() : void {
+	public function testListFilteredAndOrderedWithLimitWorks() : void
+	{
 		$s = $this->storage;
 		$uid1 = TestId::generate($this->getIdColumnLength());
 		$uid2 = TestId::generate($this->getIdColumnLength());
@@ -482,7 +500,7 @@ abstract class GenericStorageTest extends TestCase {
 
 		$expected1 = $entity1;
 		$expected3 = $entity3;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected1 = $expected1->withSeqId(1);
 			$expected3 = $expected3->withSeqId(3);
 		}
@@ -490,12 +508,12 @@ abstract class GenericStorageTest extends TestCase {
 		$c = new NotEquals(new Reference('email'), new StringConstant('b@test.php'));
 
 		$loaded_arr = self::iterable_to_array($s->listByCriteria($c, [['email', false]], 1));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid3 => $expected3,
 		], $loaded_arr);
 
 		$loaded_arr = self::iterable_to_array($s->listByCriteria($c, [['email', true]], 1));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid1 => $expected1,
 		], $loaded_arr);
 	}
@@ -503,7 +521,8 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testListAllOrderByIdWorks() : void {
+	public function testListAllOrderByIdWorks() : void
+	{
 		$s = $this->storage;
 		$pad = \str_repeat('0', $this->getIdColumnLength() * 2 - 1);
 		$uid1 = new TestId(hex2bin($pad.'1'));
@@ -519,21 +538,21 @@ abstract class GenericStorageTest extends TestCase {
 		$expected1 = $entity1;
 		$expected2 = $entity2;
 		$expected3 = $entity3;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected1 = $expected1->withSeqId(1);
 			$expected2 = $expected2->withSeqId(2);
 			$expected3 = $expected3->withSeqId(3);
 		}
 
 		$loaded_arr = self::iterable_to_array($s->listAll([['id', false]]));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid3 => $expected3,
 			(string)$uid2 => $expected2,
 			(string)$uid1 => $expected1,
 		], $loaded_arr);
 
 		$loaded_arr = self::iterable_to_array($s->listAll([['id', true]]));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid1 => $expected1,
 			(string)$uid2 => $expected2,
 			(string)$uid3 => $expected3,
@@ -543,7 +562,8 @@ abstract class GenericStorageTest extends TestCase {
 	/**
 	 * @throws Generic\GenericStorageError
 	 */
-	public function testListAllOrderByIdWithLimitWorks() : void {
+	public function testListAllOrderByIdWithLimitWorks() : void
+	{
 		$s = $this->storage;
 		$pad = \str_repeat('0', $this->getIdColumnLength() * 2 - 1);
 		$uid1 = new TestId(hex2bin($pad.'1'));
@@ -559,25 +579,26 @@ abstract class GenericStorageTest extends TestCase {
 		$expected1 = $entity1;
 		$expected2 = $entity2;
 		$expected3 = $entity3;
-		if($this->seq_id_injected){
+		if ($this->seq_id_injected) {
 			$expected1 = $expected1->withSeqId(1);
 			$expected2 = $expected2->withSeqId(2);
 			$expected3 = $expected3->withSeqId(3);
 		}
 
 		$loaded_arr = self::iterable_to_array($s->listAll([['id', false]], 1));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid3 => $expected3,
 		], $loaded_arr);
 
 		$loaded_arr = self::iterable_to_array($s->listAll([['id', true]], 2));
-		$this->assertEquals([
+		self::assertEquals([
 			(string)$uid1 => $expected1,
 			(string)$uid2 => $expected2,
 		], $loaded_arr);
 	}
 
-	protected static function iterable_to_array($it, $use_keys = true){
+	protected static function iterable_to_array($it, $use_keys = true)
+	{
 		return \is_array($it) ? $it : \iterator_to_array($it, $use_keys);
 	}
 

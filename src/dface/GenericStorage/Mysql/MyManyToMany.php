@@ -1,5 +1,4 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
 
 namespace dface\GenericStorage\Mysql;
 
@@ -9,24 +8,15 @@ use dface\GenericStorage\Generic\UnderlyingStorageError;
 class MyManyToMany implements GenericManyToMany
 {
 
-	/** @var MyLinkProvider */
-	private $linkProvider;
-	/** @var string */
-	private $tableNameEscaped;
-	/** @var string */
-	private $leftClassName;
-	/** @var string */
-	private $rightClassName;
-	/** @var string */
-	private $leftColumnName;
-	/** @var string */
-	private $rightColumnName;
-	/** @var string */
-	private $leftColumnNameEscaped;
-	/** @var string */
-	private $rightColumnNameEscaped;
-	/** @var bool */
-	private $temporary;
+	private MyLinkProvider $linkProvider;
+	private string $tableNameEscaped;
+	private string $leftClassName;
+	private string $rightClassName;
+	private string $leftColumnName;
+	private string $rightColumnName;
+	private string $leftColumnNameEscaped;
+	private string $rightColumnNameEscaped;
+	private bool $temporary;
 
 	public function __construct(
 		MyLinkProvider $linkProvider,
@@ -38,13 +28,13 @@ class MyManyToMany implements GenericManyToMany
 		bool $temporary = false
 	) {
 		$this->linkProvider = $linkProvider;
-		$this->tableNameEscaped = str_replace('`', '``', $tableName);
+		$this->tableNameEscaped = \str_replace('`', '``', $tableName);
 		$this->leftClassName = $leftClassName;
 		$this->rightClassName = $rightClassName;
 		$this->leftColumnName = $leftColumnName;
 		$this->rightColumnName = $rightColumnName;
-		$this->leftColumnNameEscaped = str_replace('`', '``', $leftColumnName);
-		$this->rightColumnNameEscaped = str_replace('`', '``', $rightColumnName);
+		$this->leftColumnNameEscaped = \str_replace('`', '``', $leftColumnName);
+		$this->rightColumnNameEscaped = \str_replace('`', '``', $rightColumnName);
 		$this->temporary = $temporary;
 	}
 
@@ -112,8 +102,8 @@ class MyManyToMany implements GenericManyToMany
 	public function has($left, $right) : bool
 	{
 		return $this->linkProvider->withLink(function (MyLink $link) use ($left, $right) {
-			$e_left_col = str_replace('`', '``', $this->leftColumnName);
-			$e_right_col = str_replace('`', '``', $this->rightColumnName);
+			$e_left_col = \str_replace('`', '``', $this->leftColumnName);
+			$e_right_col = \str_replace('`', '``', $this->rightColumnName);
 			$e_left_val = $link->escapeString($left);
 			$e_right_val = $link->escapeString($right);
 			/** @noinspection SqlResolve */
@@ -131,14 +121,14 @@ class MyManyToMany implements GenericManyToMany
 	public function add($left, $right) : void
 	{
 		$this->linkProvider->withLink(function (MyLink $link) use ($left, $right) {
-			$e_left_col = str_replace('`', '``', $this->leftColumnName);
-			$e_right_col = str_replace('`', '``', $this->rightColumnName);
+			$e_left_col = \str_replace('`', '``', $this->leftColumnName);
+			$e_right_col = \str_replace('`', '``', $this->rightColumnName);
 			$e_left_val = $link->escapeString($left);
 			$e_right_val = $link->escapeString($right);
 			/** @noinspection SqlResolve */
 			$q1 = "INSERT IGNORE INTO `$this->tableNameEscaped` (`$e_left_col`, `$e_right_col`)
  					VALUES (UNHEX('$e_left_val'), UNHEX('$e_right_val'))";
-			$link->query($q1);
+			$link->command($q1);
 		});
 	}
 
@@ -149,14 +139,14 @@ class MyManyToMany implements GenericManyToMany
 	public function remove($left, $right) : void
 	{
 		$this->linkProvider->withLink(function (MyLink $link) use ($left, $right) {
-			$e_left_col = str_replace('`', '``', $this->leftColumnName);
-			$e_right_col = str_replace('`', '``', $this->rightColumnName);
+			$e_left_col = \str_replace('`', '``', $this->leftColumnName);
+			$e_right_col = \str_replace('`', '``', $this->rightColumnName);
 			$e_left_val = $link->escapeString($left);
 			$e_right_val = $link->escapeString($right);
 			/** @noinspection SqlResolve */
 			$q1 = "DELETE FROM `$this->tableNameEscaped` 
 				WHERE `$e_left_col`=UNHEX('$e_left_val') AND `$e_right_col`=UNHEX('$e_right_val')";
-			$link->query($q1);
+			$link->command($q1);
 		});
 	}
 
@@ -182,9 +172,9 @@ class MyManyToMany implements GenericManyToMany
 
 	public function clear() : void
 	{
-		$this->linkProvider->withLink(function (MyLink $link){
+		$this->linkProvider->withLink(function (MyLink $link) {
 			/** @noinspection SqlResolve */
-			$link->query("DELETE FROM `$this->tableNameEscaped`");
+			$link->command("DELETE FROM `$this->tableNameEscaped`");
 		});
 	}
 
@@ -196,18 +186,18 @@ class MyManyToMany implements GenericManyToMany
 	 */
 	private function clearByColumn(MyLink $link, string $column, string $value) : void
 	{
-		$e_col = str_replace('`', '``', $column);
+		$e_col = \str_replace('`', '``', $column);
 		$e_val = $link->escapeString($value);
 		/** @noinspection SqlResolve */
-		$link->query("DELETE FROM `$this->tableNameEscaped` WHERE `$e_col`=UNHEX('$e_val')");
+		$link->command("DELETE FROM `$this->tableNameEscaped` WHERE `$e_col`=UNHEX('$e_val')");
 	}
 
 	public function reset() : void
 	{
 		$this->linkProvider->withLink(function (MyLink $link) {
-			$e_left_col = str_replace('`', '``', $this->leftColumnName);
-			$e_right_col = str_replace('`', '``', $this->rightColumnName);
-			$link->query("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
+			$e_left_col = \str_replace('`', '``', $this->leftColumnName);
+			$e_right_col = \str_replace('`', '``', $this->rightColumnName);
+			$link->command("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
 			$tmp = $this->temporary ? 'TEMPORARY' : '';
 			$q1 = "CREATE $tmp TABLE `$this->tableNameEscaped` (
 				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -217,7 +207,7 @@ class MyManyToMany implements GenericManyToMany
 				UNIQUE(`$e_left_col`, `$e_right_col`),
 				UNIQUE(`$e_right_col`, `$e_left_col`)
 			) ENGINE=InnoDB";
-			$link->query($q1);
+			$link->command($q1);
 		});
 	}
 

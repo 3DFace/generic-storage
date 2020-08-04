@@ -1,5 +1,5 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
+
 
 use dface\GenericStorage\Mysql\MyStorageBuilder;
 use dface\GenericStorage\MysqliSameLinkProvider;

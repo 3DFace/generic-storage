@@ -1,5 +1,4 @@
 <?php
-/* author: Ponomarev Denis <ponomarev@gmail.com> */
 
 namespace dface\GenericStorage;
 
@@ -93,7 +92,7 @@ class MyGenericStorageWithUniqueSecondaryTest extends GenericStorageTest
 		$s->saveItem($uid2, $entity2);
 		$s->updateColumns();
 		$loaded = self::iterable_to_array($s->listAll(), false);
-		$this->assertEquals([$entity1, $entity2], $loaded);
+		self::assertEquals([$entity1, $entity2], $loaded);
 	}
 
 }
