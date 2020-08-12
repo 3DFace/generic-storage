@@ -25,9 +25,19 @@ interface GenericStorage
 	 * @param $id
 	 * @param \JsonSerializable $item
 	 * @param null|int $expectedRevision
-	 * @throws UnderlyingStorageError|InvalidDataType|ItemAlreadyExists|UnexpectedRevision|UniqueConstraintViolation
+	 * @param bool $idempotency
+	 * @throws UnderlyingStorageError
+	 * @throws InvalidDataType
+	 * @throws ItemAlreadyExists
+	 * @throws UnexpectedRevision
+	 * @throws UniqueConstraintViolation
 	 */
-	public function saveItem($id, \JsonSerializable $item, int $expectedRevision = null) : void;
+	public function saveItem(
+		$id,
+		\JsonSerializable $item,
+		int $expectedRevision = null,
+		bool $idempotency = false
+	) : void;
 
 	/**
 	 * @param $id

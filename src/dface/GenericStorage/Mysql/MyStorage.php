@@ -188,10 +188,15 @@ class MyStorage implements GenericStorage
 	 * @param $id
 	 * @param \JsonSerializable $item
 	 * @param int|null $expectedRevision
+	 * @param bool $idempotency
 	 */
-	public function saveItem($id, \JsonSerializable $item, int $expectedRevision = null) : void
-	{
-		$this->linkProvider->withLink(function (MyLink $link) use ($id, $item, $expectedRevision) {
+	public function saveItem(
+		$id,
+		\JsonSerializable $item,
+		int $expectedRevision = null,
+		bool $idempotency = false
+	) : void {
+		$this->linkProvider->withLink(function (MyLink $link) use ($id, $item, $expectedRevision, $idempotency) {
 			if (!$item instanceof $this->className) {
 				throw new InvalidDataType("Stored item must be instance of $this->className");
 			}
@@ -208,20 +213,59 @@ class MyStorage implements GenericStorage
 			$data = $this->serialize($id, $arr);
 
 			if ($expectedRevision === 0) {
-				try{
+
+				try {
 					$this->insert($link, $id, $data, $add_column_set_node);
-				}catch (UnderlyingStorageError $e){
+				} catch (UnderlyingStorageError $e) {
 					if ($duplicate = $this->detectDuplicateError($e->getMessage())) {
-						throw new ItemAlreadyExists("Item '$id' already exists");
+						[$key, $val] = $duplicate;
+						if ($idempotency) {
+							$data_and_rev = $this->loadDataStrAndRevision($link, $id);
+							if ($data_and_rev === null) {
+								throw new UniqueConstraintViolation($key, $val, $e->getMessage(),
+									$e->getCode(), $e);
+							}
+							[$old_data, $old_rev] = $data_and_rev;
+							$idempotent_insert = ((int)$old_rev) === 1 && $old_data === $data;
+							if (!$idempotent_insert) {
+								throw new ItemAlreadyExists("Item '$id' already exists");
+							}
+						}else{
+							if($this->has_unique_secondary && $key !== '$id') {
+								throw new UniqueConstraintViolation($key, $val, $e->getMessage(),
+									$e->getCode(), $e);
+							}
+							throw new ItemAlreadyExists("Item '$id' already exists");
+						}
+					} else {
+						throw $e;
 					}
-					throw $e;
 				}
-			}elseif ($expectedRevision > 0) {
+
+			} elseif ($expectedRevision > 0) {
+
 				$this->update($link, $id, $data, $add_column_set_node, $expectedRevision);
-			}elseif ($this->has_unique_secondary) {
-				try{
+				$affected = $link->getAffectedRows();
+				if ($affected === 0) {
+					$data_and_rev = $this->loadDataStrAndRevision($link, $id);
+					if ($data_and_rev === null) {
+						throw new UnexpectedRevision("Item '$id' not found, expected revision $expectedRevision");
+					}
+					[$old_data, $old_rev] = $data_and_rev;
+					if($idempotency) {
+						$idempotent_update = ($old_rev - 1) === $expectedRevision && $old_data === $data;
+						if (!$idempotent_update) {
+							throw new UnexpectedRevision("Item '$id' expected revision $expectedRevision does not match actual $old_rev");
+						}
+					}else{
+						throw new UnexpectedRevision("Item '$id' expected revision $expectedRevision does not match actual $old_rev");
+					}
+				}
+
+			} elseif ($this->has_unique_secondary) {
+				try {
 					$this->insert($link, $id, $data, $add_column_set_node);
-				}catch (UnderlyingStorageError $e){
+				} catch (UnderlyingStorageError $e) {
 					if ($duplicate = $this->detectDuplicateError($e->getMessage())) {
 						[$key, $val] = $duplicate;
 						if ($key !== '$id') {
@@ -229,11 +273,11 @@ class MyStorage implements GenericStorage
 								$e->getCode(), $e);
 						}
 						$this->update($link, $id, $data, $add_column_set_node, null);
-					}else {
+					} else {
 						throw $e;
 					}
 				}
-			}else {
+			} else {
 				$this->insertOnDupUpdate($link, $id, $data, $add_column_set_node);
 			}
 		});
@@ -321,7 +365,6 @@ class MyStorage implements GenericStorage
 	 * @param string $add_column_set_node
 	 * @param int|null $expected_rev
 	 * @throws UnderlyingStorageError
-	 * @throws UnexpectedRevision
 	 */
 	private function update(
 		MyLink $link,
@@ -340,18 +383,27 @@ class MyStorage implements GenericStorage
 			"$add_column_set_node WHERE `\$id`=$e_id_quoted";
 		if ($expected_rev === null) {
 			$link->command($update);
-		}else {
+		} else {
 			$update .= " AND `\$revision`=$expected_rev";
 			$link->command($update);
-			$affected = $link->getAffectedRows();
-			if ($affected === 0) {
-				/** @noinspection SqlResolve */
-				$res = $link->query("SELECT `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=$e_id_quoted");
-				$rec = $res->fetchRow();
-				$rev = $rec[0] ?? null;
-				throw new UnexpectedRevision("Item '$id' expected revision $expected_rev does not match actual $rev");
-			}
 		}
+	}
+
+	/**
+	 * @param MyLink $link
+	 * @param string $id
+	 * @return array
+	 * @throws UnderlyingStorageError
+	 */
+	private function loadDataStrAndRevision(MyLink $link, string $id) : array
+	{
+		$e_id_quoted = '\''.$link->escapeString($id).'\'';
+		if ($this->idBin) {
+			$e_id_quoted = "UNHEX($e_id_quoted)";
+		}
+		/** @noinspection SqlResolve */
+		$res = $link->query("SELECT `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=$e_id_quoted");
+		return $res->fetchRow();
 	}
 
 	/**
@@ -459,7 +511,7 @@ class MyStorage implements GenericStorage
 						/** @var \JsonSerializable $obj */
 						$obj = $this->deserialize($rec);
 						$arr = $obj->jsonSerialize();
-					}else {
+					} else {
 						$arr = \json_decode($rec['$data'], true, 512, JSON_THROW_ON_ERROR);
 					}
 					// TODO: don't update if columns contain correct values
@@ -536,10 +588,10 @@ class MyStorage implements GenericStorage
 				if ($use_batches) {
 					if ($orderDef[0][1]) {
 						yield from $this->iterateOverLinkBatchedBySeqId($link, $baseQuery, $limit);
-					}else {
+					} else {
 						yield from $this->iterateOverLinkBatchedBySeqIdDesc($link, $baseQuery, $limit);
 					}
-				}else {
+				} else {
 					$nodes = [
 						$baseQuery,
 						$this->buildOrderBy($link, $orderDef)
@@ -549,25 +601,25 @@ class MyStorage implements GenericStorage
 					}
 					yield from $this->iterate($link, implode(' ', $nodes));
 				}
-			}else {
+			} else {
 				$nodes = [
 					$baseQuery,
 					$this->buildOrderBy($link, $orderDef),
 				];
 				if ($use_batches) {
 					yield from $this->iterateOverLinkBatchedByLimit($link, implode(' ', $nodes), $limit);
-				}else {
+				} else {
 					if ($limit) {
 						$nodes[] = " LIMIT $limit";
 					}
 					yield from $this->iterate($link, implode(' ', $nodes));
 				}
 			}
-		}elseif ($use_batches) {
+		} elseif ($use_batches) {
 			yield from $this->iterateOverLinkBatchedBySeqId($link, $baseQuery, $limit);
-		}elseif ($limit) {
+		} elseif ($limit) {
 			yield from $this->iterate($link, "$baseQuery LIMIT $limit");
-		}else {
+		} else {
 			yield from $this->iterate($link, $baseQuery);
 		}
 	}
@@ -591,7 +643,7 @@ class MyStorage implements GenericStorage
 				default:
 					if (isset($this->add_columns[$property]) || isset($this->add_generated_columns[$property])) {
 						$e_col = '`'.str_replace('`', '``', $property).'`';
-					}else {
+					} else {
 						$dot_ref = '$.'.\str_replace('/', '.', $property);
 						$e_ref = $link->escapeString($dot_ref);
 						$e_col = "JSON_UNQUOTE(JSON_EXTRACT(`\$data`, '$e_ref'))";
@@ -644,7 +696,7 @@ class MyStorage implements GenericStorage
 				$last_seq_id = $rec['$seq_id'];
 				yield $rec['$id'] => $rec;
 			}
-		}while ($found === $this->batchListSize && (!$limit || $loaded < $limit));
+		} while ($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
 
 	/**
@@ -674,7 +726,7 @@ class MyStorage implements GenericStorage
 				$last_seq_id = $rec['$seq_id'];
 				yield $rec['$id'] => $rec;
 			}
-		}while ($found === $this->batchListSize && (!$limit || $loaded < $limit));
+		} while ($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
 
 	/**
@@ -702,7 +754,7 @@ class MyStorage implements GenericStorage
 				$loaded++;
 				yield $rec['$id'] => $rec;
 			}
-		}while ($found === $this->batchListSize && (!$limit || $loaded < $limit));
+		} while ($found === $this->batchListSize && (!$limit || $loaded < $limit));
 	}
 
 	public function reset() : void

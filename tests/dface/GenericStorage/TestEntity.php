@@ -72,6 +72,13 @@ class TestEntity implements \JsonSerializable
 		return $x;
 	}
 
+	public function withEmail(string $email) : self
+	{
+		$x = clone $this;
+		$x->email = $email;
+		return $x;
+	}
+
 	public function jsonSerialize() : array
 	{
 		return [

@@ -72,11 +72,17 @@ class MemoryStorage implements GenericStorage
 	 * @param $id
 	 * @param \JsonSerializable $item
 	 * @param int|null $expectedRevision
+	 * @param bool $idempotency
 	 * @throws InvalidDataType
-	 * @throws UnexpectedRevision|ItemAlreadyExists
+	 * @throws ItemAlreadyExists
+	 * @throws UnexpectedRevision
 	 */
-	public function saveItem($id, \JsonSerializable $item, int $expectedRevision = null) : void
-	{
+	public function saveItem(
+		$id,
+		\JsonSerializable $item,
+		int $expectedRevision = null,
+		bool $idempotency = false
+	) : void {
 		if (!$item instanceof $this->className) {
 			throw new InvalidDataType("Stored item must be instance of $this->className");
 		}
@@ -86,8 +92,12 @@ class MemoryStorage implements GenericStorage
 		if ($record === null) {
 			$record = [null, 0, $this->autoIncrement];
 		}
-		[, $rev, $seq_id] = $record;
+		$new_arr = $item->jsonSerialize();
+		[$old_arr, $rev, $seq_id] = $record;
 		if ($expectedRevision !== null && $expectedRevision !== $rev) {
+			if ($idempotency && $expectedRevision === ($rev - 1) && $old_arr === $new_arr) {
+				return;
+			}
 			if ($expectedRevision === 0) {
 				throw new ItemAlreadyExists("Item '$id' already exists");
 			}

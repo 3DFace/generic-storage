@@ -175,9 +175,6 @@ abstract class GenericStorageTest extends TestCase
 		self::assertEquals($expected, $loaded);
 	}
 
-	/**
-	 * @throws Generic\GenericStorageError
-	 */
 	public function testExpectedNew() : void
 	{
 		$s = $this->storage;
@@ -189,9 +186,30 @@ abstract class GenericStorageTest extends TestCase
 		$s->saveItem($uid, $entity1, 0);
 	}
 
-	/**
-	 * @throws Generic\GenericStorageError
-	 */
+	public function testExpectedNewIdempotency() : void
+	{
+		$s = $this->storage;
+		$uid = TestId::generate($this->getIdColumnLength());
+		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
+
+		$s->saveItem($uid, $entity1, 0);
+		$s->saveItem($uid, $entity1, 0, true);
+		/** @var TestEntity $e */
+		$e = $s->getItem($uid);
+		self::assertEquals(1, $e->getRevision());
+	}
+
+	public function testExpectedNewIdempotencyNotMatch() : void
+	{
+		$s = $this->storage;
+		$uid = TestId::generate($this->getIdColumnLength());
+		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
+
+		$s->saveItem($uid, $entity1, 0);
+		$this->expectException(ItemAlreadyExists::class);
+		$s->saveItem($uid, $entity1->withEmail('changed@test.php'), 0, true);
+	}
+
 	public function testExpected1() : void
 	{
 		$s = $this->storage;
@@ -202,6 +220,32 @@ abstract class GenericStorageTest extends TestCase
 		$s->saveItem($uid, $entity1, 1);
 		$this->expectException(UnexpectedRevision::class);
 		$s->saveItem($uid, $entity1, 1);
+	}
+
+	public function testExpected1Idempotency() : void
+	{
+		$s = $this->storage;
+		$uid = TestId::generate($this->getIdColumnLength());
+		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
+
+		$s->saveItem($uid, $entity1);
+		$s->saveItem($uid, $entity1, 1);
+		$s->saveItem($uid, $entity1, 1, true);
+		/** @var TestEntity $e */
+		$e = $s->getItem($uid);
+		self::assertEquals(2, $e->getRevision());
+	}
+
+	public function testExpected1IdempotencyNotMatch() : void
+	{
+		$s = $this->storage;
+		$uid = TestId::generate($this->getIdColumnLength());
+		$entity1 = new TestEntity($uid, 'Test User 1', 'user@test.php', new TestData('asd', 10), 1);
+
+		$s->saveItem($uid, $entity1);
+		$s->saveItem($uid, $entity1, 1);
+		$this->expectException(UnexpectedRevision::class);
+		$s->saveItem($uid, $entity1->withEmail('changed@test.php'), 1, true);
 	}
 
 	/**
