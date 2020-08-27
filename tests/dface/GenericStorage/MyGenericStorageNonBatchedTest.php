@@ -48,7 +48,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		self::iterable_to_array($this->storage->listAll());
+		self::iterable_to_entries($this->storage->listAll());
 	}
 
 	/**
@@ -59,7 +59,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		self::iterable_to_array($this->storage->listByCriteria(new IsNull(new Reference('x'))));
+		self::iterable_to_entries($this->storage->listByCriteria(new IsNull(new Reference('x'))));
 	}
 
 	/**
@@ -70,7 +70,7 @@ class MyGenericStorageNonBatchedTest extends GenericStorageTest
 		$this->broke();
 		$this->expectException(UnderlyingStorageError::class);
 		$this->expectExceptionCode(0);
-		self::iterable_to_array($this->storage->getItems([TestId::generate($this->getIdColumnLength())]));
+		self::iterable_to_entries($this->storage->getItems([TestId::generate($this->getIdColumnLength())]));
 	}
 
 	/**

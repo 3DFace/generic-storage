@@ -87,13 +87,13 @@ abstract class GenericStorageTest extends TestCase
 
 		$s->removeByCriteria(new Equals(new Reference('email'), new StringConstant('user1@test.php')));
 
-		$loaded_arr = self::iterable_to_array($s->listAll());
+		$loaded_arr = self::iterable_to_entries($s->listAll());
 		$expected2 = $entity2;
 		if ($this->seq_id_injected) {
 			$expected2 = $expected2->withSeqId(2);
 		}
 		self::assertEquals([
-			(string)$uid2 => $expected2,
+			[(string)$uid2, $expected2],
 		], $loaded_arr);
 	}
 
@@ -112,7 +112,7 @@ abstract class GenericStorageTest extends TestCase
 
 		$s->clear();
 
-		$loaded_arr = self::iterable_to_array($s->listAll());
+		$loaded_arr = self::iterable_to_entries($s->listAll());
 		self::assertEmpty($loaded_arr);
 	}
 
@@ -271,21 +271,21 @@ abstract class GenericStorageTest extends TestCase
 		}
 
 		$criteria = new Equals(new Reference('email'), new StringConstant('user@test.php'));
-		$loaded_arr = self::iterable_to_array($s->listByCriteria($criteria));
+		$loaded_arr = self::iterable_to_entries($s->listByCriteria($criteria));
 		self::assertEquals([
-			(string)$uid1 => $expected1,
-			(string)$uid2 => $expected2,
+			[(string)$uid1, $expected1],
+			[(string)$uid2, $expected2],
 		], $loaded_arr);
 
 		$criteria = new Equals(new Reference('email'), new StringConstant('no@test.php'));
-		$loaded_arr = self::iterable_to_array($s->listByCriteria($criteria));
+		$loaded_arr = self::iterable_to_entries($s->listByCriteria($criteria));
 		self::assertEquals([], $loaded_arr);
 
 		if ($this->seq_id_injected) {
 			$criteria = new Equals(new Reference('seq_id'), new IntegerConstant(1));
-			$loaded_arr = self::iterable_to_array($s->listByCriteria($criteria));
+			$loaded_arr = self::iterable_to_entries($s->listByCriteria($criteria));
 			self::assertEquals([
-				(string)$uid1 => $expected1,
+				[(string)$uid1,  $expected1],
 			], $loaded_arr);
 		}
 	}
@@ -306,13 +306,13 @@ abstract class GenericStorageTest extends TestCase
 		}
 
 		$criteria = new Equals(new Reference('id'), new StringConstant((string)$uid1));
-		$loaded_arr = self::iterable_to_array($s->listByCriteria($criteria));
+		$loaded_arr = self::iterable_to_entries($s->listByCriteria($criteria));
 		self::assertEquals([
-			(string)$uid1 => $expected1,
+			[(string)$uid1, $expected1],
 		], $loaded_arr);
 
 		$criteria = new Equals(new Reference('id'), new StringConstant('asd'));
-		$loaded_arr = self::iterable_to_array($s->listByCriteria($criteria));
+		$loaded_arr = self::iterable_to_entries($s->listByCriteria($criteria));
 		self::assertEquals([], $loaded_arr);
 	}
 
@@ -341,10 +341,10 @@ abstract class GenericStorageTest extends TestCase
 			$expected3 = $expected3->withSeqId(3);
 		}
 
-		$loaded_arr = self::iterable_to_array($s->getItems([$uid1, $uid3]));
+		$loaded_arr = self::iterable_to_entries($s->getItems([$uid1, $uid3]));
 		self::assertEquals([
-			(string)$uid1 => $expected1,
-			(string)$uid3 => $expected3,
+			[(string)$uid1, $expected1],
+			[(string)$uid3, $expected3],
 		], $loaded_arr);
 	}
 
@@ -370,10 +370,10 @@ abstract class GenericStorageTest extends TestCase
 			$expected2 = $expected2->withSeqId(2);
 		}
 
-		$loaded_arr = self::iterable_to_array($s->listAll());
+		$loaded_arr = self::iterable_to_entries($s->listAll());
 		self::assertEquals([
-			(string)$uid1 => $expected1,
-			(string)$uid2 => $expected2,
+			[(string)$uid1, $expected1],
+			[(string)$uid2, $expected2],
 		], $loaded_arr);
 	}
 
@@ -402,18 +402,58 @@ abstract class GenericStorageTest extends TestCase
 			$expected3 = $expected3->withSeqId(3);
 		}
 
-		$loaded_arr = self::iterable_to_array($s->listAll([['email', false]]));
+		$loaded_arr = self::iterable_to_entries($s->listAll([['email', false]]));
 		self::assertEquals([
-			(string)$uid3 => $expected3,
-			(string)$uid2 => $expected2,
-			(string)$uid1 => $expected1
+			[(string)$uid3, $expected3],
+			[(string)$uid2, $expected2],
+			[(string)$uid1, $expected1]
 		], $loaded_arr);
 
-		$loaded_arr = self::iterable_to_array($s->listAll([['email', true]]));
+		$loaded_arr = self::iterable_to_entries($s->listAll([['email', true]]));
 		self::assertEquals([
-			(string)$uid1 => $expected1,
-			(string)$uid2 => $expected2,
-			(string)$uid3 => $expected3,
+			[(string)$uid1, $expected1],
+			[(string)$uid2, $expected2],
+			[(string)$uid3, $expected3],
+		], $loaded_arr);
+	}
+
+	/**
+	 * @throws Generic\GenericStorageError
+	 */
+	public function testListAllOrderedWorksWhenPropertyEquals() : void
+	{
+		$s = $this->storage;
+		$uid1 = TestId::generate($this->getIdColumnLength());
+		$uid2 = TestId::generate($this->getIdColumnLength());
+		$uid3 = TestId::generate($this->getIdColumnLength());
+		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
+		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
+		$entity3 = new TestEntity($uid3, 'Test User 3', 'b@test.php', null, 1);
+		$s->saveItem($uid1, $entity1);
+		$s->saveItem($uid2, $entity2);
+		$s->saveItem($uid3, $entity3);
+
+		$expected1 = $entity1;
+		$expected2 = $entity2;
+		$expected3 = $entity3;
+		if ($this->seq_id_injected) {
+			$expected1 = $expected1->withSeqId(1);
+			$expected2 = $expected2->withSeqId(2);
+			$expected3 = $expected3->withSeqId(3);
+		}
+
+		$loaded_arr = self::iterable_to_entries($s->listAll([['email', false]]));
+		self::assertEquals([
+			[(string)$uid2, $expected2],
+			[(string)$uid3, $expected3],
+			[(string)$uid1, $expected1],
+		], $loaded_arr);
+
+		$loaded_arr = self::iterable_to_entries($s->listAll([['email', true]]));
+		self::assertEquals([
+			[(string)$uid1, $expected1],
+			[(string)$uid2, $expected2],
+			[(string)$uid3, $expected3],
 		], $loaded_arr);
 	}
 
@@ -442,16 +482,16 @@ abstract class GenericStorageTest extends TestCase
 			$expected3 = $expected3->withSeqId(3);
 		}
 
-		$loaded_arr = self::iterable_to_array($s->listAll([['email', false]], 2));
+		$loaded_arr = self::iterable_to_entries($s->listAll([['email', false]], 2));
 		self::assertEquals([
-			(string)$uid3 => $expected3,
-			(string)$uid2 => $expected2,
+			[(string)$uid3, $expected3],
+			[(string)$uid2, $expected2],
 		], $loaded_arr);
 
-		$loaded_arr = self::iterable_to_array($s->listAll([['email', true]], 2));
+		$loaded_arr = self::iterable_to_entries($s->listAll([['email', true]], 2));
 		self::assertEquals([
-			(string)$uid1 => $expected1,
-			(string)$uid2 => $expected2,
+			[(string)$uid1, $expected1],
+			[(string)$uid2, $expected2],
 		], $loaded_arr);
 	}
 
@@ -480,11 +520,11 @@ abstract class GenericStorageTest extends TestCase
 			$expected3 = $expected3->withSeqId(3);
 		}
 
-		$loaded_arr = self::iterable_to_array($s->listAll([], 3));
+		$loaded_arr = self::iterable_to_entries($s->listAll([], 3));
 		self::assertEquals([
-			(string)$uid1 => $expected1,
-			(string)$uid2 => $expected2,
-			(string)$uid3 => $expected3,
+			[(string)$uid1, $expected1],
+			[(string)$uid2, $expected2],
+			[(string)$uid3, $expected3],
 		], $loaded_arr);
 	}
 
@@ -513,16 +553,16 @@ abstract class GenericStorageTest extends TestCase
 
 		$c = new NotEquals(new Reference('email'), new StringConstant('b@test.php'));
 
-		$loaded_arr = self::iterable_to_array($s->listByCriteria($c, [['email', false]]));
+		$loaded_arr = self::iterable_to_entries($s->listByCriteria($c, [['email', false]]));
 		self::assertEquals([
-			(string)$uid3 => $expected3,
-			(string)$uid1 => $expected1,
+			[(string)$uid3, $expected3],
+			[(string)$uid1, $expected1],
 		], $loaded_arr);
 
-		$loaded_arr = self::iterable_to_array($s->listByCriteria($c, [['email', true]]));
+		$loaded_arr = self::iterable_to_entries($s->listByCriteria($c, [['email', true]]));
 		self::assertEquals([
-			(string)$uid1 => $expected1,
-			(string)$uid3 => $expected3,
+			[(string)$uid1, $expected1],
+			[(string)$uid3, $expected3],
 		], $loaded_arr);
 	}
 
@@ -551,14 +591,14 @@ abstract class GenericStorageTest extends TestCase
 
 		$c = new NotEquals(new Reference('email'), new StringConstant('b@test.php'));
 
-		$loaded_arr = self::iterable_to_array($s->listByCriteria($c, [['email', false]], 1));
+		$loaded_arr = self::iterable_to_entries($s->listByCriteria($c, [['email', false]], 1));
 		self::assertEquals([
-			(string)$uid3 => $expected3,
+			[(string)$uid3, $expected3],
 		], $loaded_arr);
 
-		$loaded_arr = self::iterable_to_array($s->listByCriteria($c, [['email', true]], 1));
+		$loaded_arr = self::iterable_to_entries($s->listByCriteria($c, [['email', true]], 1));
 		self::assertEquals([
-			(string)$uid1 => $expected1,
+			[(string)$uid1, $expected1],
 		], $loaded_arr);
 	}
 
@@ -575,31 +615,31 @@ abstract class GenericStorageTest extends TestCase
 		$entity1 = new TestEntity($uid1, 'Test User 1', 'a@test.php', null, 1);
 		$entity2 = new TestEntity($uid2, 'Test User 2', 'b@test.php', null, 1);
 		$entity3 = new TestEntity($uid3, 'Test User 3', 'c@test.php', null, 1);
-		$s->saveItem($uid1, $entity1);
-		$s->saveItem($uid2, $entity2);
 		$s->saveItem($uid3, $entity3);
+		$s->saveItem($uid2, $entity2);
+		$s->saveItem($uid1, $entity1);
 
 		$expected1 = $entity1;
 		$expected2 = $entity2;
 		$expected3 = $entity3;
 		if ($this->seq_id_injected) {
-			$expected1 = $expected1->withSeqId(1);
+			$expected1 = $expected1->withSeqId(3);
 			$expected2 = $expected2->withSeqId(2);
-			$expected3 = $expected3->withSeqId(3);
+			$expected3 = $expected3->withSeqId(1);
 		}
 
-		$loaded_arr = self::iterable_to_array($s->listAll([['id', false]]));
+		$loaded_arr = self::iterable_to_entries($s->listAll([['id', false]]));
 		self::assertEquals([
-			(string)$uid3 => $expected3,
-			(string)$uid2 => $expected2,
-			(string)$uid1 => $expected1,
+			[(string)$uid3, $expected3],
+			[(string)$uid2, $expected2],
+			[(string)$uid1, $expected1],
 		], $loaded_arr);
 
-		$loaded_arr = self::iterable_to_array($s->listAll([['id', true]]));
+		$loaded_arr = self::iterable_to_entries($s->listAll([['id', true]]));
 		self::assertEquals([
-			(string)$uid1 => $expected1,
-			(string)$uid2 => $expected2,
-			(string)$uid3 => $expected3,
+			[(string)$uid1, $expected1],
+			[(string)$uid2, $expected2],
+			[(string)$uid3, $expected3],
 		], $loaded_arr);
 	}
 
@@ -629,21 +669,29 @@ abstract class GenericStorageTest extends TestCase
 			$expected3 = $expected3->withSeqId(3);
 		}
 
-		$loaded_arr = self::iterable_to_array($s->listAll([['id', false]], 1));
+		$loaded_arr = self::iterable_to_entries($s->listAll([['id', false]], 1));
 		self::assertEquals([
-			(string)$uid3 => $expected3,
+			[(string)$uid3, $expected3],
 		], $loaded_arr);
 
-		$loaded_arr = self::iterable_to_array($s->listAll([['id', true]], 2));
+		$loaded_arr = self::iterable_to_entries($s->listAll([['id', true]], 2));
 		self::assertEquals([
-			(string)$uid1 => $expected1,
-			(string)$uid2 => $expected2,
+			[(string)$uid1, $expected1],
+			[(string)$uid2, $expected2],
 		], $loaded_arr);
 	}
 
 	protected static function iterable_to_array($it, $use_keys = true)
 	{
 		return \is_array($it) ? $it : \iterator_to_array($it, $use_keys);
+	}
+
+	protected static function iterable_to_entries($it) : array{
+		$result = [];
+		foreach ($it as $k=>$v){
+			$result[] = [$k, $v];
+		}
+		return $result;
 	}
 
 }

@@ -130,7 +130,7 @@ class MemoryStorage implements GenericStorage
 	public function listAll(array $orderDef = [], int $limit = 0) : iterable
 	{
 		$values = [];
-		foreach ($this->storage as $k => [$arr]) {
+		foreach ($this->storage as $k => $arr) {
 			$values[$k] = $arr;
 		}
 		yield from $this->iterateValues($values, $orderDef, $limit);
@@ -140,8 +140,9 @@ class MemoryStorage implements GenericStorage
 	{
 		$fn = $this->criteriaBuilder->build($criteria);
 		$values = [];
-		foreach ($this->storage as $k => [$arr]) {
-			if ($fn($arr)) {
+		foreach ($this->storage as $k => $arr) {
+			[$props] = $arr;
+			if ($fn($props)) {
 				$values[$k] = $arr;
 			}
 		}
@@ -152,16 +153,21 @@ class MemoryStorage implements GenericStorage
 	{
 		if ($orderDef) {
 			$orderComparator = new MemoryOrderDefComparator($orderDef, $this->navigator, $this->comparator);
-			uasort($values, function ($arr1, $arr2) use ($orderComparator) {
-				return $orderComparator->compare($arr1, $arr2);
+			\uasort($values, function ($arr1, $arr2) use ($orderComparator) {
+				[$props1,, $seq_id1] = $arr1;
+				[$props2,, $seq_id2] = $arr2;
+				$x = $orderComparator->compare($props1, $props2);
+				if($x === 0){
+					return $seq_id1 <=> $seq_id2;
+				}
+				return $x;
 			});
 		}
 		if ($limit) {
 			$values = \array_slice($values, 0, $limit, true);
 		}
-		foreach ($values as $k => $arr) {
-			[, $rev, $seq_id] = $this->storage[$k];
-			yield $k => $this->deserialize($arr, $rev, $seq_id);
+		foreach ($values as $k => [$props, $rev, $seq_id]) {
+			yield $k => $this->deserialize($props, $rev, $seq_id);
 		}
 	}
 

@@ -583,8 +583,7 @@ class MyStorage implements GenericStorage
 	{
 		$use_batches = $this->batchListSize > 0;
 		if ($orderDef) {
-			if (\count($orderDef) === 1 && $orderDef[0][0] === $this->idPropertyName) {
-
+			if (\count($orderDef) === 1 && $orderDef[0][0] === $this->seqIdPropertyName) {
 				if ($use_batches) {
 					if ($orderDef[0][1]) {
 						yield from $this->iterateOverLinkBatchedBySeqId($link, $baseQuery, $limit);
@@ -602,6 +601,7 @@ class MyStorage implements GenericStorage
 					yield from $this->iterate($link, implode(' ', $nodes));
 				}
 			} else {
+				$orderDef = $this->enrichOrderDefWithUniqueField($orderDef);
 				$nodes = [
 					$baseQuery,
 					$this->buildOrderBy($link, $orderDef),
@@ -624,6 +624,20 @@ class MyStorage implements GenericStorage
 		}
 	}
 
+	private function  enrichOrderDefWithUniqueField(array $orderDef) : array {
+		$repeatable_order = false;
+		foreach ($orderDef as [$prop]){
+			if(\in_array($prop, [$this->seqIdPropertyName, $this->idPropertyName, '$seq_id', '$id'], true)){
+				$repeatable_order = true;
+				break;
+			}
+		}
+		if(!$repeatable_order){
+			$orderDef[] = ['$seq_id', true];
+		}
+		return $orderDef;
+	}
+
 	/**
 	 * @param MyLink $link
 	 * @param array $orderDef
@@ -634,10 +648,10 @@ class MyStorage implements GenericStorage
 		$members = [];
 		foreach ($orderDef as [$property, $asc]) {
 			switch (true) {
-				case $this->idPropertyName === $property:
+				case $this->idPropertyName === $property || '$id' === $property:
 					$e_col = '`$id`';
 					break;
-				case $this->seqIdPropertyName === $property:
+				case $this->seqIdPropertyName === $property || '$seq_id' === $property:
 					$e_col = '`$seq_id`';
 					break;
 				default:
