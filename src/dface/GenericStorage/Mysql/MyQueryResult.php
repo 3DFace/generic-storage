@@ -2,7 +2,7 @@
 
 namespace dface\GenericStorage\Mysql;
 
-interface MyResult
+interface MyQueryResult
 {
 
 	public function iterate() : iterable;

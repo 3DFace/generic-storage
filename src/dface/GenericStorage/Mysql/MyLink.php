@@ -15,25 +15,16 @@ interface MyLink
 
 	/**
 	 * @param string $query
-	 * @return MyResult
+	 * @return MyQueryResult
 	 * @throws UnderlyingStorageError
 	 */
-	public function query(string $query) : MyResult;
+	public function query(string $query) : MyQueryResult;
 
 	/**
 	 * @param string $query
+	 * @return MyCommandResult
 	 * @throws UnderlyingStorageError
 	 */
-	public function command(string $query) : void;
-
-	/**
-	 * @return int
-	 */
-	public function getAffectedRows() : int;
-
-	/**
-	 * @return mixed
-	 */
-	public function getInsertedId();
+	public function command(string $query) : MyCommandResult;
 
 }

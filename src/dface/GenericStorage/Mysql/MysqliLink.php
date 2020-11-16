@@ -21,10 +21,10 @@ class MysqliLink implements MyLink
 
 	/**
 	 * @param string $query
-	 * @return MyResult
+	 * @return MyQueryResult
 	 * @throws UnderlyingStorageError
 	 */
-	public function query(string $query) : MyResult
+	public function query(string $query) : MyQueryResult
 	{
 		try{
 			$res = $this->mysqli->query($query);
@@ -34,10 +34,10 @@ class MysqliLink implements MyLink
 		if ($res === false) {
 			throw new UnderlyingStorageError($this->mysqli->error);
 		}
-		return new MysqliResult($res);
+		return new MysqliQueryResult($res);
 	}
 
-	public function command(string $query) : void
+	public function command(string $query) : MyCommandResult
 	{
 		try{
 			$res = $this->mysqli->query($query);
@@ -47,16 +47,7 @@ class MysqliLink implements MyLink
 		if ($res === false) {
 			throw new UnderlyingStorageError($this->mysqli->error);
 		}
-	}
-
-	public function getAffectedRows() : int
-	{
-		return $this->mysqli->affected_rows;
-	}
-
-	public function getInsertedId()
-	{
-		return $this->mysqli->insert_id;
+		return new MysqliCommandResult($this->mysqli->affected_rows, $this->mysqli->insert_id);
 	}
 
 	public function getMysqli() : \mysqli

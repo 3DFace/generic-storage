@@ -2,7 +2,7 @@
 
 namespace dface\GenericStorage\Mysql;
 
-class MysqliResult implements MyResult
+class MysqliQueryResult implements MyQueryResult
 {
 
 	private \mysqli_result $result;

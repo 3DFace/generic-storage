@@ -165,7 +165,7 @@ class MyStorage implements GenericStorage
 			$sub_list = [];
 			foreach ($ids as $id) {
 				if (\count($sub_list) === $this->idBatchSize) {
-					$where = ' WHERE `$id` IN ('.implode(',', $sub_list).')';
+					$where = ' WHERE `$id` IN ('.\implode(',', $sub_list).')';
 					$node = "$this->selectAllFromTable $where";
 					yield from $this->iterateOverDecoded($link, $node, [], 0);
 					$sub_list = [];
@@ -177,7 +177,7 @@ class MyStorage implements GenericStorage
 				$sub_list[] = $e_id_quoted;
 			}
 			if ($sub_list) {
-				$where = ' WHERE `$id` IN ('.implode(',', $sub_list).')';
+				$where = ' WHERE `$id` IN ('.\implode(',', $sub_list).')';
 				$node = "$this->selectAllFromTable $where";
 				yield from $this->iterateOverDecoded($link, $node, [], 0);
 			}
@@ -244,8 +244,8 @@ class MyStorage implements GenericStorage
 
 			} elseif ($expectedRevision > 0) {
 
-				$this->update($link, $id, $data, $add_column_set_node, $expectedRevision);
-				$affected = $link->getAffectedRows();
+				$result = $this->update($link, $id, $data, $add_column_set_node, $expectedRevision);
+				$affected = $result->getAffectedRows();
 				if ($affected === 0) {
 					$data_and_rev = $this->loadDataStrAndRevision($link, $id);
 					if ($data_and_rev === null) {
@@ -285,7 +285,7 @@ class MyStorage implements GenericStorage
 
 	private function detectDuplicateError(string $message)
 	{
-		if (preg_match("/Duplicate entry '(.+)' for key '(.+)'/", $message, $m)) {
+		if (\preg_match("/Duplicate entry '(.+)' for key '(.+)'/", $message, $m)) {
 			return [$m[2], $m[1]];
 		}
 		return false;
@@ -364,6 +364,7 @@ class MyStorage implements GenericStorage
 	 * @param string $data
 	 * @param string $add_column_set_node
 	 * @param int|null $expected_rev
+	 * @return MyCommandResult
 	 * @throws UnderlyingStorageError
 	 */
 	private function update(
@@ -372,7 +373,7 @@ class MyStorage implements GenericStorage
 		string $data,
 		string $add_column_set_node,
 		?int $expected_rev
-	) : void {
+	) : MyCommandResult {
 		$e_id_quoted = '\''.$link->escapeString($id).'\'';
 		if ($this->idBin) {
 			$e_id_quoted = "UNHEX($e_id_quoted)";
@@ -382,11 +383,10 @@ class MyStorage implements GenericStorage
 		$update = "UPDATE `$this->tableNameEscaped` SET `\$data`='$e_data', `\$revision`=`\$revision`+1 ".
 			"$add_column_set_node WHERE `\$id`=$e_id_quoted";
 		if ($expected_rev === null) {
-			$link->command($update);
-		} else {
-			$update .= " AND `\$revision`=$expected_rev";
-			$link->command($update);
+			return $link->command($update);
 		}
+		$update .= " AND `\$revision`=$expected_rev";
+		return $link->command($update);
 	}
 
 	/**
@@ -441,7 +441,7 @@ class MyStorage implements GenericStorage
 			$e_val = $v === null ? 'null' : "'".$link->escapeString($v)."'";
 			$add_column_set_str[] = "$e_col=$e_val";
 		}
-		return implode(', ', $add_column_set_str);
+		return \implode(', ', $add_column_set_str);
 	}
 
 	/**
@@ -598,7 +598,7 @@ class MyStorage implements GenericStorage
 					if ($limit) {
 						$nodes[] = " LIMIT $limit";
 					}
-					yield from $this->iterate($link, implode(' ', $nodes));
+					yield from $this->iterate($link, \implode(' ', $nodes));
 				}
 			} else {
 				$orderDef = $this->enrichOrderDefWithUniqueField($orderDef);
@@ -607,12 +607,12 @@ class MyStorage implements GenericStorage
 					$this->buildOrderBy($link, $orderDef),
 				];
 				if ($use_batches) {
-					yield from $this->iterateOverLinkBatchedByLimit($link, implode(' ', $nodes), $limit);
+					yield from $this->iterateOverLinkBatchedByLimit($link, \implode(' ', $nodes), $limit);
 				} else {
 					if ($limit) {
 						$nodes[] = " LIMIT $limit";
 					}
-					yield from $this->iterate($link, implode(' ', $nodes));
+					yield from $this->iterate($link, \implode(' ', $nodes));
 				}
 			}
 		} elseif ($use_batches) {
@@ -656,7 +656,7 @@ class MyStorage implements GenericStorage
 					break;
 				default:
 					if (isset($this->add_columns[$property]) || isset($this->add_generated_columns[$property])) {
-						$e_col = '`'.str_replace('`', '``', $property).'`';
+						$e_col = '`'.\str_replace('`', '``', $property).'`';
 					} else {
 						$dot_ref = '$.'.\str_replace('/', '.', $property);
 						$e_ref = $link->escapeString($dot_ref);
@@ -666,7 +666,7 @@ class MyStorage implements GenericStorage
 			$e_dir = $asc ? '' : 'DESC';
 			$members[] = "$e_col $e_dir";
 		}
-		return ' ORDER BY '.implode(', ', $members);
+		return ' ORDER BY '.\implode(', ', $members);
 	}
 
 	/**
@@ -777,17 +777,17 @@ class MyStorage implements GenericStorage
 			$add_columns = \array_map(function ($type, $i) {
 				$type = $type['type'] ?? $type;
 				return "`$i` $type";
-			}, $this->add_columns, array_keys($this->add_columns));
-			$add_columns = $add_columns ? ','.implode("\n\t\t\t,", $add_columns) : '';
+			}, $this->add_columns, \array_keys($this->add_columns));
+			$add_columns = $add_columns ? ','.\implode("\n\t\t\t,", $add_columns) : '';
 			$add_generated_columns = '';
 			if ($this->add_generated_columns) {
 				$add_gen_arr = [];
 				foreach ($this->add_generated_columns as $i => $def) {
 					$add_gen_arr[] = "`$i` $def";
 				}
-				$add_generated_columns = ','.implode("\n\t\t\t,", $add_gen_arr);
+				$add_generated_columns = ','.\implode("\n\t\t\t,", $add_gen_arr);
 			}
-			$add_indexes = $this->add_indexes ? ','.implode("\n\t\t\t,", $this->add_indexes) : '';
+			$add_indexes = $this->add_indexes ? ','.\implode("\n\t\t\t,", $this->add_indexes) : '';
 			$link->command("DROP TABLE IF EXISTS `$this->tableNameEscaped`");
 			$tmp = $this->temporary ? 'TEMPORARY' : '';
 			$link->command("CREATE $tmp TABLE `$this->tableNameEscaped` (
