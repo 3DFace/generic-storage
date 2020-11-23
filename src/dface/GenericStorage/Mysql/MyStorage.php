@@ -324,7 +324,8 @@ class MyStorage implements GenericStorage
 		});
 	}
 
-	private function dataArrEquals($arr1, $arr2) : bool {
+	private function dataArrEquals($arr1, $arr2) : bool
+	{
 		if ($this->revisionPropertyPath) {
 			ArrayPathNavigator::extractProperty($arr1, $this->revisionPropertyPath);
 			ArrayPathNavigator::extractProperty($arr2, $this->revisionPropertyPath);
@@ -577,7 +578,7 @@ class MyStorage implements GenericStorage
 					if ($this->seqIdPropertyPath) {
 						ArrayPathNavigator::extractProperty($arr, $this->seqIdPropertyPath);
 					}
-					if($this->idPropertyPath && $this->idExtracted){
+					if ($this->idPropertyPath && $this->idExtracted) {
 						ArrayPathNavigator::extractProperty($arr, $this->idPropertyPath);
 					}
 					$data = $this->serialize('$seq_id='.$seq_id, $arr);
