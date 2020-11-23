@@ -93,6 +93,10 @@ class ArrayPathNavigatorTest extends TestCase
 		$x = ArrayPathNavigator::extractProperty($this->x, ['p4', 'p1']);
 		self::assertNull($this->x['p4']);
 		self::assertNull($x);
+
+		$x = ArrayPathNavigator::extractProperty($this->x, ['p5']);
+		self::assertArrayNotHasKey('p5', $this->x);
+		self::assertNull($x);
 	}
 
 }

@@ -86,6 +86,9 @@ class ArrayPathNavigator
 			$x = &$x[$p];
 		}
 		$p = $path[$last];
+		if($x === null || !\array_key_exists($p, $x)){
+			return $default;
+		}
 		$result = $x[$p];
 		unset($x[$p]);
 		return $result;
