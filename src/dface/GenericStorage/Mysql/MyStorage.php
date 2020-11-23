@@ -559,11 +559,16 @@ class MyStorage implements GenericStorage
 		return $this->formatter->format($node, $args, [$link, 'escapeString']);
 	}
 
-	public function updateColumns() : void
+	public function updateColumns($batch_size = 10000) : void
 	{
-		$this->linkProvider->withLink(function (MyLink $link) {
+		if($batch_size <= 0){
+			throw new \InvalidArgumentException("Batch size must be > 0");
+		}
+		$this->linkProvider->withLink(function (MyLink $link) use ($batch_size) {
 			if ($this->add_columns) {
-				$it = $this->iterateOver($link, "$this->selectAllFromTable WHERE 1 ", [], 0);
+				$updated = 0;
+				$link->command('BEGIN');
+				$it = $this->iterateOverLinkBatchedBySeqId($link, "$this->selectAllFromTable WHERE 1 ", $batch_size, 0);
 				foreach ($it as $rec) {
 					$obj = $this->deserialize($rec);
 					$arr = $obj->jsonSerialize();
@@ -588,7 +593,15 @@ class MyStorage implements GenericStorage
 					$update = "UPDATE `$this->tableNameEscaped` SET `\$data`='$e_data', `\$store_time`=`\$store_time`".
 						"$add_column_set_node WHERE `\$seq_id`='$e_id' AND `\$revision`=$expected_rev";
 					$link->command($update);
+
+					$updated++;
+					if($updated === $batch_size){
+						$link->command('COMMIT');
+						$link->command('BEGIN');
+						$updated = 0;
+					}
 				}
+				$link->command('COMMIT');
 			}
 		});
 	}
@@ -603,7 +616,7 @@ class MyStorage implements GenericStorage
 	 */
 	private function iterateOverDecoded(MyLink $link, string $q, array $orderDef, int $limit) : ?\Generator
 	{
-		foreach ($this->iterateOver($link, $q, $orderDef, $limit) as $k => $rec) {
+		foreach ($this->iterateOverLink($link, $q, $orderDef, $limit) as $k => $rec) {
 			$obj = $this->deserialize($rec);
 			yield $k => $obj;
 		}
@@ -648,19 +661,6 @@ class MyStorage implements GenericStorage
 
 	/**
 	 * @param MyLink $link
-	 * @param string $query
-	 * @param int $limit
-	 * @param array[] $orderDef
-	 * @return \Generator
-	 * @throws UnderlyingStorageError
-	 */
-	private function iterateOver(MyLink $link, string $query, array $orderDef, int $limit) : \Generator
-	{
-		yield from $this->iterateOverLink($link, $query, $orderDef, $limit);
-	}
-
-	/**
-	 * @param MyLink $link
 	 * @param string $baseQuery
 	 * @param array $orderDef
 	 * @param int $limit
@@ -674,7 +674,7 @@ class MyStorage implements GenericStorage
 			if (\count($orderDef) === 1 && $orderDef[0][0] === $this->seqIdPropertyName) {
 				if ($use_batches) {
 					if ($orderDef[0][1]) {
-						yield from $this->iterateOverLinkBatchedBySeqId($link, $baseQuery, $limit);
+						yield from $this->iterateOverLinkBatchedBySeqId($link, $baseQuery, $this->batchListSize, $limit);
 					} else {
 						yield from $this->iterateOverLinkBatchedBySeqIdDesc($link, $baseQuery, $limit);
 					}
@@ -704,7 +704,7 @@ class MyStorage implements GenericStorage
 				}
 			}
 		} elseif ($use_batches) {
-			yield from $this->iterateOverLinkBatchedBySeqId($link, $baseQuery, $limit);
+			yield from $this->iterateOverLinkBatchedBySeqId($link, $baseQuery, $this->batchListSize, $limit);
 		} elseif ($limit) {
 			yield from $this->iterate($link, "$baseQuery LIMIT $limit");
 		} else {
@@ -775,19 +775,20 @@ class MyStorage implements GenericStorage
 	/**
 	 * @param MyLink $link
 	 * @param string $baseQuery
+	 * @param int $batchListSize
 	 * @param int $limit
 	 * @return \Generator
 	 * @throws UnderlyingStorageError
 	 */
-	private function iterateOverLinkBatchedBySeqId(MyLink $link, string $baseQuery, int $limit) : \Generator
+	private function iterateOverLinkBatchedBySeqId(MyLink $link, string $baseQuery, int $batchListSize, int $limit) : \Generator
 	{
 		$last_seq_id = 0;
 		$loaded = 0;
 		do {
 			$found = 0;
-			$batch_size = $this->batchListSize;
+			$batch_size = $batchListSize;
 			if ($limit > 0) {
-				$to = $loaded + $this->batchListSize;
+				$to = $loaded + $batchListSize;
 				if ($to > $limit) {
 					$batch_size -= $to - $limit;
 				}
@@ -799,7 +800,7 @@ class MyStorage implements GenericStorage
 				$last_seq_id = $rec['$seq_id'];
 				yield $rec['$id'] => $rec;
 			}
-		} while ($found === $this->batchListSize && (!$limit || $loaded < $limit));
+		} while ($found === $batchListSize && (!$limit || $loaded < $limit));
 	}
 
 	/**

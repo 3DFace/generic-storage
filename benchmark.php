@@ -30,10 +30,10 @@ $storage = (new MyStorageBuilder(TestEntity::class, $provider, 'test_gen_storage
 	->addIndexes([
 		'INDEX email(email)',
 	])
-	->setBatchListSize(0)
+	->setBatchListSize(1000)
 	->build();
 
-function fillData(MyStorage $storage, \mysqli $link)
+function fillData(MyStorage $storage, mysqli $link)
 {
 
 	$storage->reset();
@@ -66,8 +66,8 @@ function fillData(MyStorage $storage, \mysqli $link)
 	echo(microtime(true) - $started);
 }
 
-//fillData($storage, $link);
+fillData($storage, $link);
 
-$storage->updateColumns();
+$storage->updateColumns(1000);
 
 
