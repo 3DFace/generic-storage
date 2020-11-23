@@ -5,33 +5,6 @@ namespace dface\GenericStorage\Generic;
 class ArrayPathNavigator
 {
 
-	private static function withPath(
-		array &$arr,
-		array $path,
-		bool $create_if_absent,
-		callable $found_fn,
-		callable $not_found_fn
-	) {
-		$last = \count($path) - 1;
-		$x = &$arr;
-		for ($i = 0; $i < $last; $i++) {
-			$p = $path[$i];
-			if (!isset($x[$p])) {
-				if ($create_if_absent) {
-					$x[$p] = [];
-				} else {
-					return $not_found_fn($x, $p);
-				}
-			}
-			$x = &$x[$p];
-		}
-		$last_name = $path[$last];
-		if (!\array_key_exists($last_name, $x)) {
-			return $not_found_fn($x, $last_name);
-		}
-		return $found_fn($x, $last_name);
-	}
-
 	/**
 	 * @param $arr
 	 * @param array $path
@@ -40,14 +13,14 @@ class ArrayPathNavigator
 	 */
 	public static function getPropertyValue(array $arr, array $path, $default = null)
 	{
-		return self::withPath($arr, $path, false,
-			function ($x, $prop) {
-				return $x[$prop];
-			},
-			function () use ($default) {
+		$x = &$arr;
+		foreach ($path as $p) {
+			if ($x === null || !\array_key_exists($p, $x)) {
 				return $default;
 			}
-		);
+			$x = &$x[$p];
+		}
+		return $x;
 	}
 
 	/**
@@ -57,13 +30,22 @@ class ArrayPathNavigator
 	 */
 	public static function fallbackPropertyValue(array &$arr, array $path, $value) : void
 	{
-		self::withPath($arr, $path, true,
-			function () {
-			},
-			function (&$x, $prop) use ($value) {
-				$x[$prop] = $value;
+		$last = \count($path) - 1;
+		$x = &$arr;
+		for ($i = 0; $i < $last; $i++) {
+			$p = $path[$i];
+			if (!\array_key_exists($p, $x)) {
+				$x[$p] = [];
 			}
-		);
+			$x = &$x[$p];
+			if(!is_array($x)){
+				return;
+			}
+		}
+		$p = $path[$last];
+		if (!\array_key_exists($p, $x)) {
+			$x[$p] = $value;
+		}
 	}
 
 	/**
@@ -73,10 +55,17 @@ class ArrayPathNavigator
 	 */
 	public static function setPropertyValue(array &$arr, array $path, $value) : void
 	{
-		$set = function (&$x, $prop) use ($value) {
-			$x[$prop] = $value;
-		};
-		self::withPath($arr, $path, true, $set, $set);
+		$last = \count($path) - 1;
+		$x = &$arr;
+		for ($i = 0; $i < $last; $i++) {
+			$p = $path[$i];
+			if (!isset($x[$p])) {
+				$x[$p] = [];
+			}
+			$x = &$x[$p];
+		}
+		$p = $path[$last];
+		$x[$p] = $value;
 	}
 
 	/**
@@ -87,16 +76,19 @@ class ArrayPathNavigator
 	 */
 	public static function extractProperty(array &$arr, array $path, $default = null)
 	{
-		return self::withPath($arr, $path, false,
-			function (&$x, $prop){
-				$result = $x[$prop];
-				unset($x[$prop]);
-				return $result;
-			},
-			function () use ($default) {
+		$last = \count($path) - 1;
+		$x = &$arr;
+		for ($i = 0; $i < $last; $i++) {
+			$p = $path[$i];
+			if (!isset($x[$p])) {
 				return $default;
 			}
-		);
+			$x = &$x[$p];
+		}
+		$p = $path[$last];
+		$result = $x[$p];
+		unset($x[$p]);
+		return $result;
 	}
 
 }
