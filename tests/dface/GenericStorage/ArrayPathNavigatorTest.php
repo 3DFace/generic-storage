@@ -22,7 +22,8 @@ class ArrayPathNavigatorTest extends TestCase
 				'p1' => [
 					'p1' => 'p3/p1/p1',
 				]
-			]
+			],
+			'p4' => null,
 		];
 	}
 
@@ -34,11 +35,11 @@ class ArrayPathNavigatorTest extends TestCase
 		self::assertEquals('p2/p1', ArrayPathNavigator::getPropertyValue($a, ['p2', 'p1']));
 		self::assertEquals('p3/p1/p1', ArrayPathNavigator::getPropertyValue($a, ['p3', 'p1', 'p1']));
 		self::assertNull(ArrayPathNavigator::getPropertyValue($a, ['p3', 'p2', 'p1']));
+		self::assertNull(ArrayPathNavigator::getPropertyValue($a, ['p4'], 'x'));
 	}
 
 	public function testSet() : void
 	{
-
 		ArrayPathNavigator::setPropertyValue($this->x, ['p1'], 'x');
 		self::assertEquals('x', $this->x['p1']);
 
@@ -50,24 +51,37 @@ class ArrayPathNavigatorTest extends TestCase
 
 		ArrayPathNavigator::setPropertyValue($this->x, ['p3', 'p2', 'p1'], 'x');
 		self::assertEquals('x', $this->x['p3']['p2']['p1']);
-
 	}
 
-	public function testUnset() : void
+	public function testFallback() : void
 	{
+		ArrayPathNavigator::fallbackPropertyValue($this->x, ['p1'], 'x');
+		self::assertEquals('p1', $this->x['p1']);
 
-		ArrayPathNavigator::unsetProperty($this->x, ['p1']);
+		ArrayPathNavigator::fallbackPropertyValue($this->x, ['p2', 'p1'], 'x');
+		self::assertEquals('p2/p1', $this->x['p2']['p1']);
+
+		ArrayPathNavigator::fallbackPropertyValue($this->x, ['p3', 'p2', 'p1'], 'x');
+		self::assertEquals('x', $this->x['p3']['p2']['p1']);
+	}
+
+	public function testExtract() : void
+	{
+		$x = ArrayPathNavigator::extractProperty($this->x, ['p1']);
 		self::assertArrayNotHasKey('p1', $this->x);
+		self::assertEquals('p1', $x);
 
-		ArrayPathNavigator::unsetProperty($this->x, ['p2', 'p1']);
+		$x = ArrayPathNavigator::extractProperty($this->x, ['p2', 'p1']);
 		self::assertArrayNotHasKey('p1', $this->x['p2']);
+		self::assertEquals('p2/p1', $x);
 
-		ArrayPathNavigator::unsetProperty($this->x, ['p3', 'p1', 'p1']);
+		$x = ArrayPathNavigator::extractProperty($this->x, ['p3', 'p1', 'p1']);
 		self::assertArrayNotHasKey('p1', $this->x['p3']['p1']);
+		self::assertEquals('p3/p1/p1', $x);
 
-		ArrayPathNavigator::unsetProperty($this->x, ['p3', 'p3', 'p1']);
+		$x = ArrayPathNavigator::extractProperty($this->x, ['p3', 'p3', 'p1']);
 		self::assertArrayNotHasKey('p3', $this->x['p3']);
-
+		self::assertNull($x);
 	}
 
 }

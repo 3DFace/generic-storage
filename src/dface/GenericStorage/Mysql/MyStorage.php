@@ -22,12 +22,20 @@ use dface\sql\placeholders\ParserException;
 class MyStorage implements GenericStorage
 {
 
+	public const COLUMN_MODE_KEEP_BODY = 0;
+	private const COLUMN_MODE_SAVE_EXTRACT = 1;
+	public const COLUMN_MODE_LOAD_FALLBACK = 2;
+	public const COLUMN_MODE_SEPARATED = 3;
+
 	private string $className;
 	private MyLinkProvider $linkProvider;
 	private $tableNameEscaped;
 	private ?string $idPropertyName;
+	/** @var string[] */
+	private array $idPropertyPath;
 	private string $idColumnDef;
 	private bool $idBin;
+	private bool $idExtracted;
 	/** @var string[] */
 	private array $seqIdPropertyPath;
 	private ?string $seqIdPropertyName;
@@ -62,6 +70,7 @@ class MyStorage implements GenericStorage
 	 * @param string $tableName
 	 * @param string|null $idPropertyName
 	 * @param string $idColumnDef
+	 * @param bool $idExtracted
 	 * @param string|null $revisionPropertyName
 	 * @param string|null $seqIdPropertyName
 	 * @param array $add_generated_columns
@@ -81,6 +90,7 @@ class MyStorage implements GenericStorage
 		string $tableName,
 		?string $idPropertyName = null,
 		string $idColumnDef = 'BINARY(16)',
+		bool $idExtracted = false,
 		?string $revisionPropertyName = null,
 		?string $seqIdPropertyName = null,
 		array $add_generated_columns = [],
@@ -100,7 +110,9 @@ class MyStorage implements GenericStorage
 		$this->className = $className;
 		$this->tableNameEscaped = \str_replace('`', '``', $tableName);
 		$this->idPropertyName = $idPropertyName;
+		$this->idPropertyPath = $idPropertyName !== null ? \explode('/', $idPropertyName) : [];
 		$this->idColumnDef = $idColumnDef;
+		$this->idExtracted = $idExtracted;
 		$this->idBin = \stripos($idColumnDef, 'binary') !== false;
 		$this->revisionPropertyPath = $revisionPropertyName !== null ? \explode('/', $revisionPropertyName) : [];
 		$this->seqIdPropertyName = $seqIdPropertyName;
@@ -108,12 +120,33 @@ class MyStorage implements GenericStorage
 		$this->add_generated_columns = $add_generated_columns;
 		$this->add_columns = $add_columns;
 		$this->add_columns_data = [];
+
+		$add_select_str = [];
 		foreach ($this->add_columns as $i => $x) {
-			$this->add_columns_data[$i] = [
+			$col = [
 				'escaped' => \str_replace('`', '``', $i),
 				'path' => \explode('/', $i),
 			];
+			if (\is_array($x)) {
+				if (!isset($x['type'])) {
+					throw new \InvalidArgumentException("Column '$i' has no type def");
+				}
+				$col['mode'] = $x['mode'] ?? self::COLUMN_MODE_KEEP_BODY;
+				$col['type'] = $x['type'];
+				$col['default'] = $x['default'] ?? null;
+			} else {
+				$col['type'] = $x;
+				$col['mode'] = self::COLUMN_MODE_KEEP_BODY;
+				$col['default'] = null;
+			}
+			$this->add_columns_data[$i] = $col;
+			if ($col['mode'] & self::COLUMN_MODE_LOAD_FALLBACK) {
+				$e_col = '`'.$col['escaped'].'`';
+				$add_select_str[] = $e_col;
+			}
 		}
+		$loadColumnsFragment = $add_select_str ? (', '.\implode(', ', $add_select_str)) : '';
+
 		$this->add_indexes = $add_indexes;
 
 		$this->temporary = $temporary;
@@ -123,7 +156,7 @@ class MyStorage implements GenericStorage
 		if ($this->idBin) {
 			$idSelector = "LOWER(HEX($idSelector))";
 		}
-		$this->selectAllFromTable = "SELECT `\$seq_id`, $idSelector as `\$id`, `\$data`, `\$revision` FROM `$this->tableNameEscaped`";
+		$this->selectAllFromTable = "SELECT `\$seq_id`, $idSelector as `\$id`, `\$data`, `\$revision` $loadColumnsFragment FROM `$this->tableNameEscaped`";
 		if ($batch_list_size < 0) {
 			throw new \InvalidArgumentException("Batch list size must be >=0, $batch_list_size given");
 		}
@@ -149,7 +182,7 @@ class MyStorage implements GenericStorage
 				$e_id_quoted = "UNHEX($e_id_quoted)";
 			}
 			/** @noinspection SqlResolve */
-			$res = $link->query("SELECT `\$seq_id`, `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=$e_id_quoted");
+			$res = $link->query("$this->selectAllFromTable WHERE `\$id`=$e_id_quoted");
 			$rec = $res->fetchAssoc();
 			return $rec ? $this->deserialize($rec) : null;
 		});
@@ -202,14 +235,18 @@ class MyStorage implements GenericStorage
 			}
 
 			$arr = $item->jsonSerialize();
-			if ($this->revisionPropertyPath) {
-				ArrayPathNavigator::unsetProperty($arr, $this->revisionPropertyPath);
-			}
-			if ($this->seqIdPropertyPath) {
-				ArrayPathNavigator::unsetProperty($arr, $this->seqIdPropertyPath);
-			}
+			$full_arr = $arr;
 			$add_column_set_node = $this->createUpdateColumnsFragment($link, $arr);
 			$add_column_set_node = $add_column_set_node ? (', '.$add_column_set_node) : '';
+			if ($this->idPropertyPath && $this->idExtracted) {
+				ArrayPathNavigator::extractProperty($arr, $this->idPropertyPath);
+			}
+			if ($this->revisionPropertyPath) {
+				ArrayPathNavigator::extractProperty($arr, $this->revisionPropertyPath);
+			}
+			if ($this->seqIdPropertyPath) {
+				ArrayPathNavigator::extractProperty($arr, $this->seqIdPropertyPath);
+			}
 			$data = $this->serialize($id, $arr);
 
 			if ($expectedRevision === 0) {
@@ -220,18 +257,20 @@ class MyStorage implements GenericStorage
 					if ($duplicate = $this->detectDuplicateError($e->getMessage())) {
 						[$key, $val] = $duplicate;
 						if ($idempotency) {
-							$data_and_rev = $this->loadDataStrAndRevision($link, $id);
-							if ($data_and_rev === null) {
+							$check_rec = $this->loadRecById($link, $id);
+							if ($check_rec === null) {
 								throw new UniqueConstraintViolation($key, $val, $e->getMessage(),
 									$e->getCode(), $e);
 							}
-							[$old_data, $old_rev] = $data_and_rev;
-							$idempotent_insert = ((int)$old_rev) === 1 && $old_data === $data;
+							$check_rev = (int)$check_rec['$revision'];
+							$check_obj = $this->deserialize($check_rec);
+							$check_arr = $check_obj->jsonSerialize();
+							$idempotent_insert = $check_rev === 1 && $this->dataArrEquals($check_arr, $full_arr);
 							if (!$idempotent_insert) {
 								throw new ItemAlreadyExists("Item '$id' already exists");
 							}
-						}else{
-							if($this->has_unique_secondary && $key !== '$id') {
+						} else {
+							if ($this->has_unique_secondary && $key !== '$id') {
 								throw new UniqueConstraintViolation($key, $val, $e->getMessage(),
 									$e->getCode(), $e);
 							}
@@ -247,18 +286,20 @@ class MyStorage implements GenericStorage
 				$result = $this->update($link, $id, $data, $add_column_set_node, $expectedRevision);
 				$affected = $result->getAffectedRows();
 				if ($affected === 0) {
-					$data_and_rev = $this->loadDataStrAndRevision($link, $id);
-					if ($data_and_rev === null) {
+					$check_rec = $this->loadRecById($link, $id);
+					if ($check_rec === null) {
 						throw new UnexpectedRevision("Item '$id' not found, expected revision $expectedRevision");
 					}
-					[$old_data, $old_rev] = $data_and_rev;
-					if($idempotency) {
-						$idempotent_update = ($old_rev - 1) === $expectedRevision && $old_data === $data;
+					$check_rev = (int)$check_rec['$revision'];
+					$check_obj = $this->deserialize($check_rec);
+					$check_arr = $check_obj->jsonSerialize();
+					if ($idempotency) {
+						$idempotent_update = ($check_rev - 1) === $expectedRevision && $this->dataArrEquals($check_arr, $full_arr);
 						if (!$idempotent_update) {
-							throw new UnexpectedRevision("Item '$id' expected revision $expectedRevision does not match actual $old_rev");
+							throw new UnexpectedRevision("Item '$id' expected revision $expectedRevision does not match actual $check_rev");
 						}
-					}else{
-						throw new UnexpectedRevision("Item '$id' expected revision $expectedRevision does not match actual $old_rev");
+					} else {
+						throw new UnexpectedRevision("Item '$id' expected revision $expectedRevision does not match actual $check_rev");
 					}
 				}
 
@@ -281,6 +322,18 @@ class MyStorage implements GenericStorage
 				$this->insertOnDupUpdate($link, $id, $data, $add_column_set_node);
 			}
 		});
+	}
+
+	private function dataArrEquals($arr1, $arr2) : bool {
+		if ($this->revisionPropertyPath) {
+			ArrayPathNavigator::extractProperty($arr1, $this->revisionPropertyPath);
+			ArrayPathNavigator::extractProperty($arr2, $this->revisionPropertyPath);
+		}
+		if ($this->seqIdPropertyPath) {
+			ArrayPathNavigator::extractProperty($arr1, $this->seqIdPropertyPath);
+			ArrayPathNavigator::extractProperty($arr2, $this->seqIdPropertyPath);
+		}
+		return $arr1 === $arr2;
 	}
 
 	private function detectDuplicateError(string $message)
@@ -395,15 +448,15 @@ class MyStorage implements GenericStorage
 	 * @return array
 	 * @throws UnderlyingStorageError
 	 */
-	private function loadDataStrAndRevision(MyLink $link, string $id) : array
+	private function loadRecById(MyLink $link, string $id) : array
 	{
 		$e_id_quoted = '\''.$link->escapeString($id).'\'';
 		if ($this->idBin) {
 			$e_id_quoted = "UNHEX($e_id_quoted)";
 		}
 		/** @noinspection SqlResolve */
-		$res = $link->query("SELECT `\$data`, `\$revision` FROM `$this->tableNameEscaped` WHERE `\$id`=$e_id_quoted");
-		return $res->fetchRow();
+		$res = $link->query("$this->selectAllFromTable WHERE `\$id`=$e_id_quoted");
+		return $res->fetchAssoc();
 	}
 
 	/**
@@ -431,12 +484,16 @@ class MyStorage implements GenericStorage
 	 * @param $arr
 	 * @return string
 	 */
-	private function createUpdateColumnsFragment(MyLink $link, $arr) : string
+	private function createUpdateColumnsFragment(MyLink $link, &$arr) : string
 	{
 		$add_column_set_str = [];
-		foreach ($this->add_columns as $i => $x) {
-			$default = $x['default'] ?? null;
-			$v = ArrayPathNavigator::getPropertyValue($arr, $this->add_columns_data[$i]['path'], $default);
+		foreach ($this->add_columns_data as $i => $col) {
+			$default = $col['default'];
+			if ($col['mode'] & self::COLUMN_MODE_SAVE_EXTRACT) {
+				$v = ArrayPathNavigator::extractProperty($arr, $this->add_columns_data[$i]['path'], $default);
+			} else {
+				$v = ArrayPathNavigator::getPropertyValue($arr, $this->add_columns_data[$i]['path'], $default);
+			}
 			$e_col = '`'.$this->add_columns_data[$i]['escaped'].'`';
 			$e_val = $v === null ? 'null' : "'".$link->escapeString($v)."'";
 			$add_column_set_str[] = "$e_col=$e_val";
@@ -501,24 +558,35 @@ class MyStorage implements GenericStorage
 		return $this->formatter->format($node, $args, [$link, 'escapeString']);
 	}
 
-	public function updateColumns($full_deserialize = false) : void
+	public function updateColumns() : void
 	{
-		$this->linkProvider->withLink(function (MyLink $link) use ($full_deserialize) {
+		$this->linkProvider->withLink(function (MyLink $link) {
 			if ($this->add_columns) {
 				$it = $this->iterateOver($link, "$this->selectAllFromTable WHERE 1 ", [], 0);
 				foreach ($it as $rec) {
-					if ($full_deserialize) {
-						/** @var \JsonSerializable $obj */
-						$obj = $this->deserialize($rec);
-						$arr = $obj->jsonSerialize();
-					} else {
-						$arr = \json_decode($rec['$data'], true, 512, JSON_THROW_ON_ERROR);
+					$obj = $this->deserialize($rec);
+					$arr = $obj->jsonSerialize();
+					$seq_id = $rec['$seq_id'];
+					$e_id = $link->escapeString($seq_id);
+
+					$add_column_set_node = $this->createUpdateColumnsFragment($link, $arr);
+					$add_column_set_node = $add_column_set_node ? (', '.$add_column_set_node) : '';
+					if ($this->revisionPropertyPath) {
+						ArrayPathNavigator::extractProperty($arr, $this->revisionPropertyPath);
 					}
-					// TODO: don't update if columns contain correct values
-					$add_column_set_str = $this->createUpdateColumnsFragment($link, $arr);
-					$e_id = $link->escapeString($rec['$seq_id']);
+					if ($this->seqIdPropertyPath) {
+						ArrayPathNavigator::extractProperty($arr, $this->seqIdPropertyPath);
+					}
+					if($this->idPropertyPath && $this->idExtracted){
+						ArrayPathNavigator::extractProperty($arr, $this->idPropertyPath);
+					}
+					$data = $this->serialize('$seq_id='.$seq_id, $arr);
+					$e_data = $link->escapeString($data);
+					$expected_rev = (int)$rec['$revision'];
 					/** @noinspection SqlResolve */
-					$link->command("UPDATE `$this->tableNameEscaped` SET $add_column_set_str WHERE `\$seq_id`='$e_id'");
+					$update = "UPDATE `$this->tableNameEscaped` SET `\$data`='$e_data', `\$store_time`=`\$store_time`".
+						"$add_column_set_node WHERE `\$seq_id`='$e_id' AND `\$revision`=$expected_rev";
+					$link->command($update);
 				}
 			}
 		});
@@ -542,18 +610,37 @@ class MyStorage implements GenericStorage
 
 	/**
 	 * @param array $rec
-	 * @return mixed
+	 * @return array
 	 * @throws \JsonException
 	 */
-	private function deserialize(array $rec)
+	private function reconstituteData(array $rec) : array
 	{
 		$arr = \json_decode($rec['$data'], true, 512, JSON_THROW_ON_ERROR);
+		if ($this->idPropertyPath && $this->idExtracted) {
+			ArrayPathNavigator::setPropertyValue($arr, $this->idPropertyPath, $rec['$id']);
+		}
 		if ($this->revisionPropertyPath) {
 			ArrayPathNavigator::setPropertyValue($arr, $this->revisionPropertyPath, $rec['$revision']);
 		}
 		if ($this->seqIdPropertyPath) {
 			ArrayPathNavigator::setPropertyValue($arr, $this->seqIdPropertyPath, $rec['$seq_id']);
 		}
+		foreach ($this->add_columns_data as $i => $col) {
+			if ($col['mode'] & self::COLUMN_MODE_LOAD_FALLBACK) {
+				ArrayPathNavigator::fallbackPropertyValue($arr, $col['path'], $rec[$i]);
+			}
+		}
+		return $arr;
+	}
+
+	/**
+	 * @param array $rec
+	 * @return \JsonSerializable
+	 * @throws \JsonException
+	 */
+	private function deserialize(array $rec) : \JsonSerializable
+	{
+		$arr = $this->reconstituteData($rec);
 		/** @noinspection PhpUndefinedMethodInspection */
 		return $this->className::deserialize($arr);
 	}
@@ -624,15 +711,16 @@ class MyStorage implements GenericStorage
 		}
 	}
 
-	private function  enrichOrderDefWithUniqueField(array $orderDef) : array {
+	private function enrichOrderDefWithUniqueField(array $orderDef) : array
+	{
 		$repeatable_order = false;
-		foreach ($orderDef as [$prop]){
-			if(\in_array($prop, [$this->seqIdPropertyName, $this->idPropertyName, '$seq_id', '$id'], true)){
+		foreach ($orderDef as [$prop]) {
+			if (\in_array($prop, [$this->seqIdPropertyName, $this->idPropertyName, '$seq_id', '$id'], true)) {
 				$repeatable_order = true;
 				break;
 			}
 		}
-		if(!$repeatable_order){
+		if (!$repeatable_order) {
 			$orderDef[] = ['$seq_id', true];
 		}
 		return $orderDef;

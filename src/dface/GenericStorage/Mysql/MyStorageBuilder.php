@@ -9,6 +9,7 @@ class MyStorageBuilder
 	private MyLinkProvider $linkProvider;
 	private string $tableName;
 	private ?string $idPropertyName = null;
+	private bool $idExtracted = false;
 	private string $idColumnDef = 'BINARY(16)';
 	private ?string $revisionPropertyName = null;
 	private ?string $seqIdPropertyName = null;
@@ -36,6 +37,12 @@ class MyStorageBuilder
 	public function setIdPropertyName(string $idPropertyName) : MyStorageBuilder
 	{
 		$this->idPropertyName = $idPropertyName;
+		return $this;
+	}
+
+	public function setIdExtracted(bool $extracted) : MyStorageBuilder
+	{
+		$this->idExtracted = $extracted;
 		return $this;
 	}
 
@@ -129,6 +136,7 @@ class MyStorageBuilder
 			$this->tableName,
 			$this->idPropertyName,
 			$this->idColumnDef,
+			$this->idExtracted,
 			$this->revisionPropertyName,
 			$this->seqIdPropertyName,
 			$this->add_generated_columns,

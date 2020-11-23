@@ -2,6 +2,7 @@
 
 namespace dface\GenericStorage;
 
+use dface\GenericStorage\Mysql\MyStorage;
 use dface\GenericStorage\Mysql\MyStorageBuilder;
 
 class MyGenericStorageBatched10Test extends GenericStorageTest
@@ -17,10 +18,11 @@ class MyGenericStorageBatched10Test extends GenericStorageTest
 		$linkProvider = LinkProviderFactory::createLinkProvider();
 		$this->storage = (new MyStorageBuilder(TestEntity::class, $linkProvider, 'test_gen_storage'))
 			->setIdPropertyName('id')
+			->setIdExtracted(true)
 			->setIdColumnDef('BINARY(32)')
 			->setRevisionPropertyName('revision')
 			->addColumns([
-				'email' => 'VARCHAR(128)',
+				'email' => ['type' => 'VARCHAR(128)', 'mode' => MyStorage::COLUMN_MODE_SEPARATED],
 				'data/a' => 'VARCHAR(128)',
 			])
 			->addIndexes([
