@@ -561,48 +561,46 @@ class MyStorage implements GenericStorage
 
 	public function updateColumns($batch_size = 10000) : void
 	{
-		if($batch_size <= 0){
+		if ($batch_size <= 0) {
 			throw new \InvalidArgumentException("Batch size must be > 0");
 		}
 		$this->linkProvider->withLink(function (MyLink $link) use ($batch_size) {
-			if ($this->add_columns) {
-				$updated = 0;
-				$link->command('BEGIN');
-				$it = $this->iterateOverLinkBatchedBySeqId($link, "$this->selectAllFromTable WHERE 1 ", $batch_size, 0);
-				foreach ($it as $rec) {
-					$obj = $this->deserialize($rec);
-					$arr = $obj->jsonSerialize();
-					$seq_id = $rec['$seq_id'];
-					$e_id = $link->escapeString($seq_id);
+			$updated = 0;
+			$link->command('BEGIN');
+			$it = $this->iterateOverLinkBatchedBySeqId($link, "$this->selectAllFromTable WHERE 1 ", $batch_size, 0);
+			foreach ($it as $rec) {
+				$obj = $this->deserialize($rec);
+				$arr = $obj->jsonSerialize();
+				$seq_id = $rec['$seq_id'];
+				$e_id = $link->escapeString($seq_id);
 
-					$add_column_set_node = $this->createUpdateColumnsFragment($link, $arr);
-					$add_column_set_node = $add_column_set_node ? (', '.$add_column_set_node) : '';
-					if ($this->revisionPropertyPath) {
-						ArrayPathNavigator::extractProperty($arr, $this->revisionPropertyPath);
-					}
-					if ($this->seqIdPropertyPath) {
-						ArrayPathNavigator::extractProperty($arr, $this->seqIdPropertyPath);
-					}
-					if ($this->idPropertyPath && $this->idExtracted) {
-						ArrayPathNavigator::extractProperty($arr, $this->idPropertyPath);
-					}
-					$data = $this->serialize('$seq_id='.$seq_id, $arr);
-					$e_data = $link->escapeString($data);
-					$expected_rev = (int)$rec['$revision'];
-					/** @noinspection SqlResolve */
-					$update = "UPDATE `$this->tableNameEscaped` SET `\$data`='$e_data', `\$store_time`=`\$store_time`".
-						"$add_column_set_node WHERE `\$seq_id`='$e_id' AND `\$revision`=$expected_rev";
-					$link->command($update);
-
-					$updated++;
-					if($updated === $batch_size){
-						$link->command('COMMIT');
-						$link->command('BEGIN');
-						$updated = 0;
-					}
+				$add_column_set_node = $this->createUpdateColumnsFragment($link, $arr);
+				$add_column_set_node = $add_column_set_node ? (', '.$add_column_set_node) : '';
+				if ($this->revisionPropertyPath) {
+					ArrayPathNavigator::extractProperty($arr, $this->revisionPropertyPath);
 				}
-				$link->command('COMMIT');
+				if ($this->seqIdPropertyPath) {
+					ArrayPathNavigator::extractProperty($arr, $this->seqIdPropertyPath);
+				}
+				if ($this->idPropertyPath && $this->idExtracted) {
+					ArrayPathNavigator::extractProperty($arr, $this->idPropertyPath);
+				}
+				$data = $this->serialize('$seq_id='.$seq_id, $arr);
+				$e_data = $link->escapeString($data);
+				$expected_rev = (int)$rec['$revision'];
+				/** @noinspection SqlResolve */
+				$update = "UPDATE `$this->tableNameEscaped` SET `\$data`='$e_data', `\$store_time`=`\$store_time`".
+					"$add_column_set_node WHERE `\$seq_id`='$e_id' AND `\$revision`=$expected_rev";
+				$link->command($update);
+
+				$updated++;
+				if ($updated === $batch_size) {
+					$link->command('COMMIT');
+					$link->command('BEGIN');
+					$updated = 0;
+				}
 			}
+			$link->command('COMMIT');
 		});
 	}
 

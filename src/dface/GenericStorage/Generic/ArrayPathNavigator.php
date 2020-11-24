@@ -38,7 +38,7 @@ class ArrayPathNavigator
 				$x[$p] = [];
 			}
 			$x = &$x[$p];
-			if(!is_array($x)){
+			if(!\is_array($x)){
 				return;
 			}
 		}
