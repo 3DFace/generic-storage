@@ -1,12 +1,14 @@
-<phpunit bootstrap="bootstrap.php">
+<?xml version="1.0"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" bootstrap="bootstrap.php"
+         xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/9.3/phpunit.xsd">
+    <coverage>
+        <include>
+            <directory>src/dface/GenericStorage</directory>
+        </include>
+    </coverage>
     <testsuites>
         <testsuite name="Unit Tests">
-            <directory suffix="Test.php" phpVersion="7.1.0" phpVersionOperator=">=">tests/</directory>
+            <directory phpVersion="7.1.0">tests/</directory>
         </testsuite>
     </testsuites>
-    <filter>
-        <whitelist>
-            <directory>src/dface/GenericStorage</directory>
-        </whitelist>
-    </filter>
 </phpunit>

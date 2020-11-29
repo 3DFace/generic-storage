@@ -29,7 +29,7 @@ class MyStorage implements GenericStorage
 
 	private string $className;
 	private MyLinkProvider $linkProvider;
-	private $tableNameEscaped;
+	private string $tableNameEscaped;
 	private ?string $idPropertyName;
 	/** @var string[] */
 	private array $idPropertyPath;
@@ -59,10 +59,8 @@ class MyStorage implements GenericStorage
 	private int $dataMaxSize;
 	private bool $compressed;
 
-	/** @var Formatter */
-	private $formatter;
-	/** @var Parser */
-	private $parser;
+	private Formatter $formatter;
+	private Parser $parser;
 
 	/**
 	 * @param string $className
