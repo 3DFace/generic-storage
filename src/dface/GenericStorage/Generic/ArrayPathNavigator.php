@@ -67,18 +67,41 @@ class ArrayPathNavigator
 		$x = &$arr;
 		for ($i = 0; $i < $last; $i++) {
 			$p = $path[$i];
-			if (!isset($x[$p])) {
+			if (\is_object($x)) {
+				if (!isset($x->{$p})) {
+					return $default;
+				}
+				$x = &$x->{$p};
+			} elseif (\is_array($x)) {
+				if (!isset($x[$p])) {
+					return $default;
+				}
+				$x = &$x[$p];
+			} else {
 				return $default;
 			}
-			$x = &$x[$p];
 		}
 		$p = $path[$last];
-		if($x === null || !\array_key_exists($p, $x)){
-			return $default;
+		if (\is_object($x)) {
+			if (!\property_exists($x, $p)) {
+				return $default;
+			}
+			$result = $x->{$p};
+			unset($x->{$p});
+			return $result;
 		}
-		$result = $x[$p];
-		unset($x[$p]);
-		return $result;
+
+		if (\is_array($x)) {
+			if (!\array_key_exists($p, $x)) {
+				return $default;
+			}
+			$result = $x[$p];
+			unset($x[$p]);
+			return $result;
+		}
+
+		return $default;
+
 	}
 
 }

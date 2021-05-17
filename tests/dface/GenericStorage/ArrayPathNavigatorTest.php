@@ -14,7 +14,7 @@ class ArrayPathNavigatorTest extends TestCase
 	{
 		parent::setUp();
 		$p5 = new \stdClass();
-		$p5->p1 = 'p1';
+		$p5->p1 = 'p5/p1';
 		$this->x = [
 			'p1' => 'p1',
 			'p2' => [
@@ -37,7 +37,7 @@ class ArrayPathNavigatorTest extends TestCase
 		self::assertEquals('p1', ArrayPathNavigator::getPropertyValue($a, ['p1']));
 		self::assertEquals('p2/p1', ArrayPathNavigator::getPropertyValue($a, ['p2', 'p1']));
 		self::assertEquals('p3/p1/p1', ArrayPathNavigator::getPropertyValue($a, ['p3', 'p1', 'p1']));
-		self::assertEquals('p1', ArrayPathNavigator::getPropertyValue($a, ['p5', 'p1']));
+		self::assertEquals('p5/p1', ArrayPathNavigator::getPropertyValue($a, ['p5', 'p1']));
 		self::assertNull(ArrayPathNavigator::getPropertyValue($a, ['p3', 'p2', 'p1']));
 		self::assertNull(ArrayPathNavigator::getPropertyValue($a, ['p4'], 'x'));
 		self::assertNull(ArrayPathNavigator::getPropertyValue($a, ['p4', 'p1']));
@@ -97,6 +97,14 @@ class ArrayPathNavigatorTest extends TestCase
 
 		$x = ArrayPathNavigator::extractProperty($this->x, ['p4', 'p1']);
 		self::assertNull($this->x['p4']);
+		self::assertNull($x);
+
+		$x = ArrayPathNavigator::extractProperty($this->x, ['p5', 'p1']);
+		self::assertObjectNotHasAttribute('p1', $this->x['p5']);
+		self::assertEquals('p5/p1', $x);
+
+		$x = ArrayPathNavigator::extractProperty($this->x, ['p5', 'p2']);
+		self::assertObjectNotHasAttribute('p2', $this->x['p5']);
 		self::assertNull($x);
 
 		$x = ArrayPathNavigator::extractProperty($this->x, ['p6']);
