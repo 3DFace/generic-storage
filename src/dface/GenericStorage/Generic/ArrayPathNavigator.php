@@ -5,12 +5,6 @@ namespace dface\GenericStorage\Generic;
 class ArrayPathNavigator
 {
 
-	/**
-	 * @param $arr
-	 * @param array $path
-	 * @param $default
-	 * @return mixed
-	 */
 	public static function getPropertyValue(array $arr, array $path, $default = null)
 	{
 		$x = &$arr;
@@ -23,11 +17,6 @@ class ArrayPathNavigator
 		return $x;
 	}
 
-	/**
-	 * @param $arr
-	 * @param array $path
-	 * @param $value
-	 */
 	public static function fallbackPropertyValue(array &$arr, array $path, $value) : void
 	{
 		$last = \count($path) - 1;
@@ -48,11 +37,6 @@ class ArrayPathNavigator
 		}
 	}
 
-	/**
-	 * @param $arr
-	 * @param array $path
-	 * @param $value
-	 */
 	public static function setPropertyValue(array &$arr, array $path, $value) : void
 	{
 		$last = \count($path) - 1;

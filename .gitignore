@@ -3,3 +3,4 @@ vendor/
 options.php
 composer.lock
 infection-log.txt
+.phpunit.result.cache

@@ -92,7 +92,7 @@ class MemoryStorage implements GenericStorage
 		if ($record === null) {
 			$record = [null, 0, $this->autoIncrement];
 		}
-		$new_arr = $item->jsonSerialize();
+		$new_arr = (array)$item->jsonSerialize();
 		[$old_arr, $rev, $seq_id] = $record;
 		if ($expectedRevision !== null && $expectedRevision !== $rev) {
 			if ($idempotency && $expectedRevision === ($rev - 1) && $old_arr === $new_arr) {
@@ -103,7 +103,7 @@ class MemoryStorage implements GenericStorage
 			}
 			throw new UnexpectedRevision("Item '$id' expected revision $expectedRevision does not match actual $rev");
 		}
-		$this->storage[$k] = [$item->jsonSerialize(), $rev + 1, $seq_id];
+		$this->storage[$k] = [$new_arr, $rev + 1, $seq_id];
 	}
 
 	public function removeItem($id) : void

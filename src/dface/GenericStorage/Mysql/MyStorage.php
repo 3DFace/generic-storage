@@ -232,7 +232,7 @@ class MyStorage implements GenericStorage
 				throw new InvalidDataType("Stored item must be instance of $this->className");
 			}
 
-			$arr = $item->jsonSerialize();
+			$arr = (array)$item->jsonSerialize();
 			$full_arr = $arr;
 			$add_column_set_node = $this->createUpdateColumnsFragment($link, $arr);
 			$add_column_set_node = $add_column_set_node ? (', '.$add_column_set_node) : '';
@@ -262,7 +262,7 @@ class MyStorage implements GenericStorage
 							}
 							$check_rev = (int)$check_rec['$revision'];
 							$check_obj = $this->deserialize($check_rec);
-							$check_arr = $check_obj->jsonSerialize();
+							$check_arr = (array)$check_obj->jsonSerialize();
 							$idempotent_insert = $check_rev === 1 && $this->dataArrEquals($check_arr, $full_arr);
 							if (!$idempotent_insert) {
 								throw new ItemAlreadyExists("Item '$id' already exists");
@@ -290,7 +290,7 @@ class MyStorage implements GenericStorage
 					}
 					$check_rev = (int)$check_rec['$revision'];
 					$check_obj = $this->deserialize($check_rec);
-					$check_arr = $check_obj->jsonSerialize();
+					$check_arr = (array)$check_obj->jsonSerialize();
 					if ($idempotency) {
 						$idempotent_update = ($check_rev - 1) === $expectedRevision && $this->dataArrEquals($check_arr, $full_arr);
 						if (!$idempotent_update) {
@@ -568,7 +568,7 @@ class MyStorage implements GenericStorage
 			$it = $this->iterateOverLinkBatchedBySeqId($link, "$this->selectAllFromTable WHERE 1 ", $batch_size, 0);
 			foreach ($it as $rec) {
 				$obj = $this->deserialize($rec);
-				$arr = $obj->jsonSerialize();
+				$arr = (array)$obj->jsonSerialize();
 				$seq_id = $rec['$seq_id'];
 				$e_id = $link->escapeString($seq_id);
 
@@ -606,7 +606,7 @@ class MyStorage implements GenericStorage
 	 * @param MyLink $link
 	 * @param string $q
 	 * @param int $limit
-	 * @param $orderDef
+	 * @param array $orderDef
 	 * @return \Generator|null
 	 * @throws UnderlyingStorageError|\JsonException
 	 */
@@ -878,8 +878,8 @@ class MyStorage implements GenericStorage
 			$tmp = $this->temporary ? 'TEMPORARY' : '';
 			$link->command("CREATE $tmp TABLE `$this->tableNameEscaped` (
 				`\$seq_id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-				`\$id` {$this->idColumnDef} NOT NULL,
-				`\$data` {$this->dataColumnDef},
+				`\$id` $this->idColumnDef NOT NULL,
+				`\$data` $this->dataColumnDef,
 				`\$store_time` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 				`\$revision` INT NOT NULL DEFAULT 1,
 				UNIQUE (`\$id`)

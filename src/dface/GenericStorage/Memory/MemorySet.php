@@ -9,19 +9,19 @@ class MemorySet implements GenericSet
 
 	private array $set = [];
 
-	public function contains($entityId) : bool
+	public function contains($id) : bool
 	{
-		return isset($this->set[(string)$entityId]);
+		return isset($this->set[(string)$id]);
 	}
 
-	public function add($entityId) : void
+	public function add($id) : void
 	{
-		$this->set[(string)$entityId] = $entityId;
+		$this->set[(string)$id] = $id;
 	}
 
-	public function remove($entityId) : void
+	public function remove($id) : void
 	{
-		unset($this->set[(string)$entityId]);
+		unset($this->set[(string)$id]);
 	}
 
 	public function clear() : void
