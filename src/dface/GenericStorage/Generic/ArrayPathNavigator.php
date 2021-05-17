@@ -7,12 +7,15 @@ class ArrayPathNavigator
 
 	public static function getPropertyValue(array $arr, array $path, $default = null)
 	{
-		$x = &$arr;
+		$x = $arr;
 		foreach ($path as $p) {
+			if (\is_object($x)) {
+				$x = (array)$x;
+			}
 			if ($x === null || !\array_key_exists($p, $x)) {
 				return $default;
 			}
-			$x = &$x[$p];
+			$x = $x[$p];
 		}
 		return $x;
 	}
