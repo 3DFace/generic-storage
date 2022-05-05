@@ -5,122 +5,102 @@ namespace dface\GenericStorage\Mysql;
 class MyStorageBuilder
 {
 
-	private string $className;
 	private MyLinkProvider $linkProvider;
-	private string $tableName;
-	private ?string $idPropertyName = null;
-	private bool $idExtracted = false;
-	private string $idColumnDef = 'BINARY(16)';
-	private ?string $revisionPropertyName = null;
-	private ?string $seqIdPropertyName = null;
-	/** @var string[] */
-	private array $add_generated_columns = [];
-	/** @var string[] */
-	private array $add_columns = [];
-	/** @var string[] */
-	private array $add_indexes = [];
-	private bool $has_unique_secondary = false;
-	private bool $temporary = false;
-	private int $batchListSize = 10000;
-	private int $idBatchSize = 500;
-	private string $dataColumnDef = 'TEXT';
-	private int $dataMaxSize = 65535;
-	private bool $compressed = true;
+	private MyJsonStorageBuilder $builder;
 
-	public function __construct($className, MyLinkProvider $link, $tableName)
+	public function __construct(string $className, MyLinkProvider $link, string $tableName)
 	{
-		$this->className = $className;
 		$this->linkProvider = $link;
-		$this->tableName = $tableName;
+		$this->builder = new MyJsonStorageBuilder($className, $tableName);
 	}
 
-	public function setIdPropertyName(string $idPropertyName) : MyStorageBuilder
+	public function setIdPropertyName(string $idPropertyName) : self
 	{
-		$this->idPropertyName = $idPropertyName;
+		$this->builder->setIdPropertyName($idPropertyName);
 		return $this;
 	}
 
-	public function setIdExtracted(bool $extracted) : MyStorageBuilder
+	public function setIdExtracted(bool $extracted) : self
 	{
-		$this->idExtracted = $extracted;
+		$this->builder->setIdExtracted($extracted);
 		return $this;
 	}
 
-	public function setIdColumnDef(string $idColumnDef) : MyStorageBuilder
+	public function setIdColumnDef(string $idColumnDef) : self
 	{
-		$this->idColumnDef = $idColumnDef;
+		$this->builder->setIdColumnDef($idColumnDef);
 		return $this;
 	}
 
-	public function setRevisionPropertyName(string $revisionPropertyName) : MyStorageBuilder
+	public function setRevisionPropertyName(string $revisionPropertyName) : self
 	{
-		$this->revisionPropertyName = $revisionPropertyName;
+		$this->builder->setRevisionPropertyName($revisionPropertyName);
 		return $this;
 	}
 
-	public function setSeqIdPropertyName(string $seqIdPropertyName) : MyStorageBuilder
+	public function setSeqIdPropertyName(string $seqIdPropertyName) : self
 	{
-		$this->seqIdPropertyName = $seqIdPropertyName;
+		$this->builder->setSeqIdPropertyName($seqIdPropertyName);
 		return $this;
 	}
 
-	public function addColumns(array $add_columns) : MyStorageBuilder
+	public function addColumns(array $add_columns) : self
 	{
-		$this->add_columns = $add_columns;
+		$this->builder->addColumns($add_columns);
 		return $this;
 	}
 
-	public function addGeneratedColumns(array $add_generated_columns) : MyStorageBuilder
+	public function addGeneratedColumns(array $add_generated_columns) : self
 	{
-		$this->add_generated_columns = $add_generated_columns;
+		$this->builder->addGeneratedColumns($add_generated_columns);
 		return $this;
 	}
 
-	public function addIndexes(array $add_indexes) : MyStorageBuilder
+	public function addIndexes(array $add_indexes) : self
 	{
-		$this->add_indexes = $add_indexes;
+		$this->builder->addIndexes($add_indexes);
 		return $this;
 	}
 
-	public function setHasUniqueSecondary(bool $has_unique_secondary) : MyStorageBuilder
+	public function setHasUniqueSecondary(bool $has_unique_secondary) : self
 	{
-		$this->has_unique_secondary = $has_unique_secondary;
+		$this->builder->setHasUniqueSecondary($has_unique_secondary);
 		return $this;
 	}
 
-	public function setTemporary(bool $temporary) : MyStorageBuilder
+	public function setTemporary(bool $temporary) : self
 	{
-		$this->temporary = $temporary;
+		$this->builder->setTemporary($temporary);
 		return $this;
 	}
 
-	public function setBatchListSize(int $batchListSize) : MyStorageBuilder
+	public function setBatchListSize(int $batchListSize) : self
 	{
-		$this->batchListSize = $batchListSize;
+		$this->builder->setBatchListSize($batchListSize);
 		return $this;
 	}
 
-	public function setIdBatchSize(int $idBatchSize) : MyStorageBuilder
+	public function setIdBatchSize(int $idBatchSize) : self
 	{
-		$this->idBatchSize = $idBatchSize;
+		$this->builder->setIdBatchSize($idBatchSize);
 		return $this;
 	}
 
-	public function setDataColumnDef(string $dataColumnDef) : MyStorageBuilder
+	public function setDataColumnDef(string $dataColumnDef) : self
 	{
-		$this->dataColumnDef = $dataColumnDef;
+		$this->builder->setDataColumnDef($dataColumnDef);
 		return $this;
 	}
 
-	public function setDataMaxSize(int $dataMaxSize) : MyStorageBuilder
+	public function setDataMaxSize(int $dataMaxSize) : self
 	{
-		$this->dataMaxSize = $dataMaxSize;
+		$this->builder->setDataMaxSize($dataMaxSize);
 		return $this;
 	}
 
-	public function setCompressed(bool $compressed) : MyStorageBuilder
+	public function setCompressed(bool $compressed) : self
 	{
-		$this->compressed = $compressed;
+		$this->builder->setCompressed($compressed);
 		return $this;
 	}
 
@@ -130,25 +110,8 @@ class MyStorageBuilder
 	 */
 	public function build() : MyStorage
 	{
-		return new MyStorage(
-			$this->className,
-			$this->linkProvider,
-			$this->tableName,
-			$this->idPropertyName,
-			$this->idColumnDef,
-			$this->idExtracted,
-			$this->revisionPropertyName,
-			$this->seqIdPropertyName,
-			$this->add_generated_columns,
-			$this->add_columns,
-			$this->add_indexes,
-			$this->has_unique_secondary,
-			$this->temporary,
-			$this->batchListSize,
-			$this->idBatchSize,
-			$this->dataColumnDef,
-			$this->dataMaxSize,
-			$this->compressed);
+		$storage = $this->builder->build();
+		return new MyStorage($storage, $this->linkProvider);
 	}
 
 }

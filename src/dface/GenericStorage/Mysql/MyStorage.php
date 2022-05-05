@@ -15,65 +15,10 @@ class MyStorage implements GenericStorage
 	private MyJsonStorage $jsonStorage;
 	private MyLinkProvider $linkProvider;
 
-	/**
-	 * @param string $className
-	 * @param MyLinkProvider $link_provider
-	 * @param string $tableName
-	 * @param string|null $idPropertyName
-	 * @param string $idColumnDef
-	 * @param bool $idExtracted
-	 * @param string|null $revisionPropertyName
-	 * @param string|null $seqIdPropertyName
-	 * @param array $add_generated_columns
-	 * @param array $add_columns
-	 * @param array $add_indexes
-	 * @param bool $has_unique_secondary
-	 * @param bool $temporary
-	 * @param int $batch_list_size
-	 * @param int $id_batch_size
-	 * @param string $dataColumnDef
-	 * @param int $dataMaxSize
-	 * @param bool $compressed
-	 */
-	public function __construct(
-		string $className,
-		MyLinkProvider $link_provider,
-		string $tableName,
-		?string $idPropertyName = null,
-		string $idColumnDef = 'BINARY(16)',
-		bool $idExtracted = false,
-		?string $revisionPropertyName = null,
-		?string $seqIdPropertyName = null,
-		array $add_generated_columns = [],
-		array $add_columns = [],
-		array $add_indexes = [],
-		bool $has_unique_secondary = false,
-		bool $temporary = false,
-		int $batch_list_size = 10000,
-		int $id_batch_size = 500,
-		string $dataColumnDef = 'TEXT',
-		int $dataMaxSize = 65535,
-		bool $compressed = true
-	) {
-		$this->linkProvider = $link_provider;
-		$this->jsonStorage = new MyJsonStorage(
-			$className,
-			$tableName,
-			$idPropertyName,
-			$idColumnDef,
-			$idExtracted,
-			$revisionPropertyName,
-			$seqIdPropertyName,
-			$add_generated_columns,
-			$add_columns,
-			$add_indexes,
-			$has_unique_secondary,
-			$temporary,
-			$batch_list_size,
-			$id_batch_size,
-			$dataColumnDef,
-			$dataMaxSize,
-			$compressed);
+	public function __construct(MyJsonStorage $jsonStorage, MyLinkProvider $linkProvider)
+	{
+		$this->jsonStorage = $jsonStorage;
+		$this->linkProvider = $linkProvider;
 	}
 
 	/**
