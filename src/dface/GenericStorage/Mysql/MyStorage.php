@@ -21,6 +21,11 @@ class MyStorage implements GenericStorage
 		$this->linkProvider = $linkProvider;
 	}
 
+	public function getJsonStorage() : MyJsonStorage
+	{
+		return $this->jsonStorage;
+	}
+
 	/**
 	 * @param $id
 	 * @return \JsonSerializable|null
