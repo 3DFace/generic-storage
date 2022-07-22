@@ -314,6 +314,14 @@ abstract class GenericStorageTest extends TestCase
 		$criteria = new Equals(new Reference('id'), new StringConstant('asd'));
 		$loaded_arr = self::iterable_to_entries($s->listByCriteria($criteria));
 		self::assertEquals([], $loaded_arr);
+
+		if ($this->seq_id_injected) {
+			$criteria = new Equals(new Reference('seq_id'), new IntegerConstant(1));
+			$loaded_arr = self::iterable_to_entries($s->listByCriteria($criteria));
+			self::assertEquals([
+				[(string)$uid1, $expected1],
+			], $loaded_arr);
+		}
 	}
 
 	/**
@@ -681,7 +689,7 @@ abstract class GenericStorageTest extends TestCase
 		], $loaded_arr);
 	}
 
-	protected static function iterable_to_array($it, $use_keys = true)
+	protected static function iterable_to_array($it, $use_keys = true) : array
 	{
 		return \is_array($it) ? $it : \iterator_to_array($it, $use_keys);
 	}

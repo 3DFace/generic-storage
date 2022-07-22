@@ -453,10 +453,10 @@ class MyJsonStorage
 	/**
 	 * @param MyLink $link
 	 * @param string $id
-	 * @return array
+	 * @return array|null
 	 * @throws UnderlyingStorageError
 	 */
-	private function loadRecById(MyLink $link, string $id) : array
+	private function loadRecById(MyLink $link, string $id) : ?array
 	{
 		$e_id_quoted = '\''.$link->escapeString($id).'\'';
 		if ($this->idBin) {

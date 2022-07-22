@@ -61,7 +61,7 @@ abstract class GenericSetTest extends TestCase
 		self::assertEquals([], self::iterable_to_array($this->set->iterate()));
 	}
 
-	protected static function iterable_to_array($it, $use_keys = true)
+	protected static function iterable_to_array($it, $use_keys = true) : array
 	{
 		return \is_array($it) ? $it : \iterator_to_array($it, $use_keys);
 	}

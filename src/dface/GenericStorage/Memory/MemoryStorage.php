@@ -50,7 +50,8 @@ class MemoryStorage implements GenericStorage
 			return null;
 		}
 		[$arr, $rev, $seq_id] = $record;
-		return $this->deserialize($arr, $rev, $seq_id);
+		$this->patchProps($arr, $rev, $seq_id);
+		return $this->deserialize($arr);
 	}
 
 	/**
@@ -63,7 +64,8 @@ class MemoryStorage implements GenericStorage
 			$k = (string)$id;
 			if (isset($this->storage[$k])) {
 				[$arr, $rev, $seq_id] = $this->storage[$k];
-				yield $k => $this->deserialize($arr, $rev, $seq_id);
+				$this->patchProps($arr, $rev, $seq_id);
+				yield $k => $this->deserialize($arr);
 			}
 		}
 	}
@@ -115,7 +117,8 @@ class MemoryStorage implements GenericStorage
 	public function removeByCriteria(Criteria $criteria) : void
 	{
 		$fn = $this->criteriaBuilder->build($criteria);
-		foreach ($this->storage as $k => [$arr]) {
+		foreach ($this->storage as $k => [$arr, $rev, $seq_id]) {
+			$this->patchProps($arr, $rev, $seq_id);
 			if ($fn($arr)) {
 				unset($this->storage[$k]);
 			}
@@ -141,7 +144,8 @@ class MemoryStorage implements GenericStorage
 		$fn = $this->criteriaBuilder->build($criteria);
 		$values = [];
 		foreach ($this->storage as $k => $arr) {
-			[$props] = $arr;
+			[$props, $rev, $seq_id] = $arr;
+			$this->patchProps($props, $rev, $seq_id);
 			if ($fn($props)) {
 				$values[$k] = $arr;
 			}
@@ -167,18 +171,22 @@ class MemoryStorage implements GenericStorage
 			$values = \array_slice($values, 0, $limit, true);
 		}
 		foreach ($values as $k => [$props, $rev, $seq_id]) {
-			yield $k => $this->deserialize($props, $rev, $seq_id);
+			$this->patchProps($props, $rev, $seq_id);
+			yield $k => $this->deserialize($props);
 		}
 	}
 
-	private function deserialize(array $arr, int $rev, int $seq_id)
-	{
+	private function patchProps(array &$arr, int $rev, int $seq_id) : void {
 		if ($this->revisionPropertyPath) {
 			ArrayPathNavigator::setPropertyValue($arr, $this->revisionPropertyPath, $rev);
 		}
 		if ($this->seqIdPropertyPath) {
 			ArrayPathNavigator::setPropertyValue($arr, $this->seqIdPropertyPath, $seq_id);
 		}
+	}
+
+	private function deserialize(array $arr)
+	{
 		$cls = $this->className;
 		/** @noinspection PhpUndefinedMethodInspection */
 		return $cls::deserialize($arr);

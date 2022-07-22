@@ -24,7 +24,7 @@ class TestData implements \JsonSerializable
 		return $this->b;
 	}
 
-	public function jsonSerialize()
+	public function jsonSerialize() : array
 	{
 		return [
 			'a' => $this->a,

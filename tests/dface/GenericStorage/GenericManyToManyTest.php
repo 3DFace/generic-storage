@@ -195,7 +195,7 @@ abstract class GenericManyToManyTest extends TestCase
 		}
 	}
 
-	protected static function iterable_to_array($it, $use_keys = true)
+	protected static function iterable_to_array($it, $use_keys = true) : array
 	{
 		return \is_array($it) ? $it : \iterator_to_array($it, $use_keys);
 	}
