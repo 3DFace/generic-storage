@@ -158,8 +158,10 @@ class MemoryStorage implements GenericStorage
 		if ($orderDef) {
 			$orderComparator = new MemoryOrderDefComparator($orderDef, $this->navigator, $this->comparator);
 			\uasort($values, function ($arr1, $arr2) use ($orderComparator) {
-				[$props1,, $seq_id1] = $arr1;
-				[$props2,, $seq_id2] = $arr2;
+				[$props1, $rev1, $seq_id1] = $arr1;
+				[$props2, $rev2, $seq_id2] = $arr2;
+				$this->patchProps($props1, $rev1, $seq_id1);
+				$this->patchProps($props2, $rev2, $seq_id2);
 				$x = $orderComparator->compare($props1, $props2);
 				if($x === 0){
 					return $seq_id1 <=> $seq_id2;
