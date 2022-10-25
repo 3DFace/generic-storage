@@ -27,4 +27,6 @@ interface MyLink
 	 */
 	public function command(string $query) : MyCommandResult;
 
+	public function close() : void;
+
 }

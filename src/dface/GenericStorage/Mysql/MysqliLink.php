@@ -50,6 +50,11 @@ class MysqliLink implements MyLink
 		return new MysqliCommandResult($this->mysqli->affected_rows, $this->mysqli->insert_id);
 	}
 
+	public function close() : void
+	{
+		$this->mysqli->close();
+	}
+
 	public function getMysqli() : \mysqli
 	{
 		return $this->mysqli;
