@@ -375,6 +375,7 @@ class MyJsonStorage
 			$e_id_quoted = "UNHEX($e_id_quoted)";
 		}
 		/** @noinspection SqlResolve */
+		/** @noinspection SqlType */
 		$link->command("DELETE FROM `$this->tableNameEscaped` WHERE `\$id`=$e_id_quoted");
 	}
 
@@ -441,6 +442,7 @@ class MyJsonStorage
 		}
 		$e_data = $link->escapeString($data);
 		/** @noinspection SqlResolve */
+		/** @noinspection SqlType */
 		$update = "UPDATE `$this->tableNameEscaped` SET `\$data`='$e_data', `\$revision`=`\$revision`+1 ".
 			"$add_column_set_node WHERE `\$id`=$e_id_quoted";
 		if ($expected_rev === null) {
@@ -757,6 +759,12 @@ class MyJsonStorage
 					break;
 				case $this->seqIdPropertyName === $property || '$seq_id' === $property:
 					$e_col = '`$seq_id`';
+					break;
+				case '$store_time' === $property:
+					$e_col = '`$store_time`';
+					break;
+				case '$revision' === $property:
+					$e_col = '`$revision`';
 					break;
 				default:
 					if (isset($this->add_columns[$property]) || isset($this->add_generated_columns[$property])) {
