@@ -100,11 +100,11 @@ class ArrayPathNavigatorTest extends TestCase
 		self::assertNull($x);
 
 		$x = ArrayPathNavigator::extractProperty($this->x, ['p5', 'p1']);
-		self::assertObjectNotHasAttribute('p1', $this->x['p5']);
+		self::assertObjectNotHasProperty('p1', $this->x['p5']);
 		self::assertEquals('p5/p1', $x);
 
 		$x = ArrayPathNavigator::extractProperty($this->x, ['p5', 'p2']);
-		self::assertObjectNotHasAttribute('p2', $this->x['p5']);
+		self::assertObjectNotHasProperty('p2', $this->x['p5']);
 		self::assertNull($x);
 
 		$x = ArrayPathNavigator::extractProperty($this->x, ['p6']);
