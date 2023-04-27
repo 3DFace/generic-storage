@@ -11,8 +11,8 @@
   ],
   "require": {
     "php": "^7.4|^8.1",
-    "dface/criteria": "^3.0.0",
-    "dface/sql-placeholders": "^2.0",
+    "dface/criteria": "dev-master",
+    "dface/sql-placeholders": "dev-master",
     "ext-mysqli": "*",
     "ext-json": "*"
   },
