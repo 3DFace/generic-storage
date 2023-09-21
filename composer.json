@@ -28,5 +28,10 @@
     "psr-0": {
       "dface\\GenericStorage\\": "tests/"
     }
+  },
+  "config": {
+    "platform": {
+      "php": "8.2.5"
+    }
   }
 }
