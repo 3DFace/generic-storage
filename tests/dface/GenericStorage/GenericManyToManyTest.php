@@ -191,7 +191,7 @@ abstract class GenericManyToManyTest extends TestCase
 		self::assertCount(\count($expected), $set);
 		foreach ($expected as $e) {
 			/** @noinspection PhpUnitTestsInspection */
-			self::assertTrue(\in_array($e, $set, false));
+			self::assertTrue(\in_array($e, $set));
 		}
 	}
 

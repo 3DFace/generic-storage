@@ -16,10 +16,11 @@ interface GenericStorage
 
 	/**
 	 * @param iterable $ids
+	 * @param array[] $orderDef - list of pairs [`property`(string), `direction`(bool)]
 	 * @return \JsonSerializable[]|iterable
 	 * @throws UnderlyingStorageError
 	 */
-	public function getItems(iterable $ids) : iterable;
+	public function getItems(iterable $ids, array $orderDef = []) : iterable;
 
 	/**
 	 * @param $id
@@ -35,7 +36,7 @@ interface GenericStorage
 	public function saveItem(
 		$id,
 		\JsonSerializable $item,
-		int $expectedRevision = null,
+		?int $expectedRevision = null,
 		bool $idempotency = false
 	) : void;
 

@@ -349,7 +349,7 @@ abstract class GenericStorageTest extends TestCase
 			$expected3 = $expected3->withSeqId(3);
 		}
 
-		$loaded_arr = self::iterable_to_entries($s->getItems([$uid1, $uid3]));
+		$loaded_arr = self::iterable_to_entries($s->getItems([$uid1, $uid3], [['name', true]]));
 		self::assertEquals([
 			[(string)$uid1, $expected1],
 			[(string)$uid3, $expected3],

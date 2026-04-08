@@ -21,10 +21,10 @@ use dface\sql\placeholders\ParserException;
 class MyJsonStorage
 {
 
-	public const COLUMN_MODE_KEEP_BODY = 0;
-	private const COLUMN_MODE_SAVE_EXTRACT = 1;
-	public const COLUMN_MODE_LOAD_FALLBACK = 2;
-	public const COLUMN_MODE_SEPARATED = 3;
+	public const int COLUMN_MODE_KEEP_BODY = 0;
+	private const int COLUMN_MODE_SAVE_EXTRACT = 1;
+	public const int COLUMN_MODE_LOAD_FALLBACK = 2;
+	public const int COLUMN_MODE_SEPARATED = 3;
 
 	private string $className;
 	private string $tableNameEscaped;
@@ -185,11 +185,12 @@ class MyJsonStorage
 	/**
 	 * @param MyLink $link
 	 * @param iterable $ids
+	 * @param array $orderDef
 	 * @return iterable
 	 * @throws UnderlyingStorageError
 	 * @throws \JsonException
 	 */
-	public function getItems(MyLink $link, iterable $ids) : iterable
+	public function getItems(MyLink $link, iterable $ids, array $orderDef = []) : iterable
 	{
 		$sub_list = [];
 		foreach ($ids as $id) {
@@ -208,7 +209,7 @@ class MyJsonStorage
 		if ($sub_list) {
 			$where = ' WHERE `$id` IN ('.\implode(',', $sub_list).')';
 			$node = "$this->selectAllFromTable $where";
-			yield from $this->iterateOverDecoded($link, $node, [], 0);
+			yield from $this->iterateOverDecoded($link, $node, $orderDef, 0);
 		}
 	}
 
@@ -230,7 +231,7 @@ class MyJsonStorage
 		MyLink $link,
 		$id,
 		\JsonSerializable $item,
-		int $expectedRevision = null,
+		?int $expectedRevision = null,
 		bool $idempotency = false
 	) : void {
 

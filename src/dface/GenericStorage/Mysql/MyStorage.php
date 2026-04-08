@@ -8,9 +8,9 @@ use dface\GenericStorage\Generic\GenericStorage;
 class MyStorage implements GenericStorage
 {
 
-	public const COLUMN_MODE_KEEP_BODY = 0;
-	public const COLUMN_MODE_LOAD_FALLBACK = 2;
-	public const COLUMN_MODE_SEPARATED = 3;
+	public const int COLUMN_MODE_KEEP_BODY = 0;
+	public const int COLUMN_MODE_LOAD_FALLBACK = 2;
+	public const int COLUMN_MODE_SEPARATED = 3;
 
 	private MyJsonStorage $jsonStorage;
 	private MyLinkProvider $linkProvider;
@@ -44,9 +44,10 @@ class MyStorage implements GenericStorage
 
 	/**
 	 * @param iterable $ids
+	 * @param array $orderDef
 	 * @return iterable
 	 */
-	public function getItems(iterable $ids) : iterable
+	public function getItems(iterable $ids, array $orderDef = []) : iterable
 	{
 		return $this->linkProvider->withLink(function (MyLink $link) use ($ids) {
 			return $this->jsonStorage->getItems($link, $ids);
@@ -62,7 +63,7 @@ class MyStorage implements GenericStorage
 	public function saveItem(
 		$id,
 		\JsonSerializable $item,
-		int $expectedRevision = null,
+		?int $expectedRevision = null,
 		bool $idempotency = false
 	) : void {
 		$this->linkProvider->withLink(function (MyLink $link) use ($id, $item, $expectedRevision, $idempotency) {

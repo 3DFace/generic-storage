@@ -29,8 +29,8 @@ class MemoryStorage implements GenericStorage
 
 	public function __construct(
 		string $className,
-		string $revisionPropertyName = null,
-		string $seqIdPropertyName = null
+		?string $revisionPropertyName = null,
+		?string $seqIdPropertyName = null
 	) {
 		$this->className = $className;
 		$this->comparator = new SimpleComparator();
@@ -56,18 +56,19 @@ class MemoryStorage implements GenericStorage
 
 	/**
 	 * @param iterable $ids
-	 * @return \JsonSerializable[]|iterable
+	 * @param array $orderDef
+	 * @return iterable
 	 */
-	public function getItems(iterable $ids) : iterable
+	public function getItems(iterable $ids, array $orderDef = []) : iterable
 	{
+		$values = [];
 		foreach ($ids as $id) {
 			$k = (string)$id;
 			if (isset($this->storage[$k])) {
-				[$arr, $rev, $seq_id] = $this->storage[$k];
-				$this->patchProps($arr, $rev, $seq_id);
-				yield $k => $this->deserialize($arr);
+				$values[$k] = $this->storage[$k];
 			}
 		}
+		yield from $this->iterateValues($values, $orderDef, 0);
 	}
 
 	/**
@@ -82,7 +83,7 @@ class MemoryStorage implements GenericStorage
 	public function saveItem(
 		$id,
 		\JsonSerializable $item,
-		int $expectedRevision = null,
+		?int $expectedRevision = null,
 		bool $idempotency = false
 	) : void {
 		if (!$item instanceof $this->className) {
